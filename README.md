@@ -1,5 +1,7 @@
 # OCS2 Toolbox
-An updated version of the Optimal Control for Switched Systems (OCS2) library including ros2 communication, colcon build system and functionality for improved interactivity (Gain setting, enabling/disabling costs & constraints). 
+An updated version of the Optimal Control for Switched Systems (OCS2) library ported to build with bazel and using ROS2.
+
+ Furthermore it includes improved interactivity (Gain setting, enabling/disabling costs & constraints) from my prior ROS2 port of OCS2.
 
 ## Summary
 OCS2 is a C++ toolbox tailored for Optimal Control for Switched Systems (OCS2). The toolbox provides an efficient implementation of the following algorith
@@ -24,11 +26,7 @@ Registry for ROS2 "Lyrical Luth" packages and the Bazel Central Registry
 for generic C++ dependencies:
 
 ```
-bazelisk build //...
-bazelisk test //...
+bazel build //...
+bazel test //...
 ```
 
-Use `bazelisk` (not a plain `bazel` binary) so the `.bazelversion` pin
-actually takes effect. This is a separate, additional build path; it does
-not affect the legacy catkin/ROS1 packages elsewhere in this repo, which
-are still colcon-buildable exactly as before. 
