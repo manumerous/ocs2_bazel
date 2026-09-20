@@ -1,0 +1,54 @@
+name: Bazel Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+
+    steps:
+      - name: System deps
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential python3 python3-dev git curl ca-certificates patch unzip
+
+      - uses: actions/checkout@v4
+
+      - name: Install Bazel (bazelisk, pinned via .bazelversion)
+        run: |
+          curl -fsSL -o /usr/local/bin/bazel \
+            https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64
+          chmod +x /usr/local/bin/bazel
+          bazel --version
+
+      - name: Cache Bazel
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}
+          restore-keys: |
+            bazel-${{ runner.os }}-
+
+      - name: Build
+        run: bazel build --keep_going //...
+
+      - name: Test
+        run: bazel test --keep_going --test_output=errors //...
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs
+          path: bazel-testlogs/
+          if-no-files-found: ignore
