@@ -35,8 +35,14 @@ jobs:
           path: |
             ~/.cache/bazel
             ~/.cache/bazelisk
-          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}
+          # GitHub Actions cache keys are immutable once saved, so the key
+          # includes run_id to force a fresh save every run (otherwise the
+          # cache would freeze at whatever the first run produced and never
+          # pick up later incremental build/test outputs). restore-keys falls
+          # back to the closest previous cache by prefix match.
+          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}-${{ github.run_id }}
           restore-keys: |
+            bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}-
             bazel-${{ runner.os }}-
 
       - name: Build
