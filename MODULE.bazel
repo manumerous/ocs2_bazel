@@ -87,6 +87,12 @@ bazel_dep(name = "urdfdom_headers", version = "3.0.0-3.rcr.1")
 
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 
+# nanobind, for ocs2_python_interface's Python bindings (replaces the old
+# pybind11-based PybindMacros.h). nanobind_bazel's own version tracks the
+# nanobind version it wraps 1:1. Uses the existing rules_python/Python 3.12
+# toolchain registered below (shared with RCR's own rosidl codegen scripts).
+bazel_dep(name = "nanobind_bazel", version = "2.12.0")
+
 # ---------------------------------------------------------------------------
 # RCR: ROS2 "Lyrical Luth" packages
 #
@@ -166,6 +172,18 @@ python.toolchain(
     is_default = True,
     python_version = "3.12",
 )
+
+# numpy, for ocs2_python_interface's test/test_dummy_py_bindings.py -- the
+# only place in this repo that needs a pip package rather than a pure C++
+# extension. Unlocked (no --require-hashes) since this is test-only, not a
+# reproducible production artifact; see requirements.txt.
+pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+pip.parse(
+    hub_name = "pip_deps",
+    python_version = "3.12",
+    requirements_lock = "//:requirements.txt",
+)
+use_repo(pip, "pip_deps")
 
 # ---------------------------------------------------------------------------
 # http_archive: no registry module exists for these

@@ -601,6 +601,8 @@
     "https://bcr.bazel.build/modules/mcap/1.4.0/source.json": "467df21db6d6126bbbb3067543cd1ee9d9a955f48116cc5aa2c1cb73af6e1210",
     "https://bcr.bazel.build/modules/mimick/0.9.0.bcr.0/MODULE.bazel": "bd13885f51547769bcb53afac79c11d04728c10dd689c4325886856347cfc228",
     "https://bcr.bazel.build/modules/mimick/0.9.0.bcr.0/source.json": "8aebe3966058cb5b04d03f56072840c7d560f08de049efe76958acd77338e603",
+    "https://bcr.bazel.build/modules/nanobind_bazel/2.12.0/MODULE.bazel": "3a8a9e79f5e6da7e71d7a1aa33e0e3b4131d4e72cfacbc3d0215666f69557214",
+    "https://bcr.bazel.build/modules/nanobind_bazel/2.12.0/source.json": "f8684bd3683917cc18bd8c5fcdfc675915826379df5965d49017ff5189af96cb",
     "https://bcr.bazel.build/modules/nanoflann/1.5.5/MODULE.bazel": "41db23018d92b01697a0812d904d4ab3d539c3e9154e459a8442debb597b6d4f",
     "https://bcr.bazel.build/modules/nanoflann/1.5.5/source.json": "cd557e423f38db1effb8b16468792f55e224dc1db41bfcc9048a46339082f238",
     "https://bcr.bazel.build/modules/nasm/2.16.03.bcr.3/MODULE.bazel": "c2a14e98f8aee6546486d34b5e9d02f53afe1a29ec138260338f15a8ba07cd46",
@@ -693,6 +695,8 @@
     "https://bcr.bazel.build/modules/readline/8.3.bcr.1/source.json": "a42bf1ff95df0203dc6f94c26ca86927bf6b2cb397b7888898666b9e57c37e78",
     "https://bcr.bazel.build/modules/remotery/1.0.0/MODULE.bazel": "d63879d29c1cd9fd5ee6e89094b45a62493548798c55e4aad8592706ca42427f",
     "https://bcr.bazel.build/modules/remotery/1.0.0/source.json": "7eddd3d182375fa74f55b9694c0adc654e3243e8e1cd49e89a719047d76a9f19",
+    "https://bcr.bazel.build/modules/robin-map/1.4.0/MODULE.bazel": "de8f012a488d8962bb86b3f17b1c0662ac73616f46ded211a177d5b0520732a8",
+    "https://bcr.bazel.build/modules/robin-map/1.4.0/source.json": "298dfead8b8fb9dd2b1e0949cb15568ff8022f4a275b189338d9ec031019cdde",
     "https://bcr.bazel.build/modules/rules_android/0.1.1/MODULE.bazel": "48809ab0091b07ad0182defb787c4c5328bd3a278938415c00a7b69b50c4d3a8",
     "https://bcr.bazel.build/modules/rules_android/0.7.1/MODULE.bazel": "a806fc382a774252f228a40e3b11b9fcc6276f8778c7fb33e9f72937c6258363",
     "https://bcr.bazel.build/modules/rules_android/0.7.1/source.json": "151440aed3f0f73a00d4ed5cec5d31f63a6fef9b95d8fab1eb1810150fa525f2",
@@ -1508,6 +1512,7 @@
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/mimick/0.9.0.bcr.0/MODULE.bazel": "not found",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/mimick_vendor/0.9.0-3.rcr.1/MODULE.bazel": "ae76f69fca773f755780ed177f78b119cee3b0b3f1778b01b2c3a901d085604a",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/mimick_vendor/0.9.0-3.rcr.1/source.json": "af24694d74ebb8c01b2198a8c307c4374ded2d0758877be2cdce0621ba36449e",
+    "https://intrinsic-opensource.github.io/ros-central-registry/modules/nanobind_bazel/2.12.0/MODULE.bazel": "not found",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/nanoflann/1.5.5/MODULE.bazel": "not found",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/nasm/2.16.03.bcr.3/MODULE.bazel": "not found",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/nav_msgs/5.9.2-3.rcr.1/MODULE.bazel": "017120aa9f68c2563a86498b8b31f507a74f8b837469dd285ea77f60d45bf586",
@@ -1646,6 +1651,7 @@
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/rmw_test_fixture_implementation/0.15.8-1.rcr.1/source.json": "323473b7748cda139d79315039cd21f36f85162a0b06b3c8e5c6d1a6e8798130",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/rmw_zenoh_cpp/0.10.4-1.rcr.1/MODULE.bazel": "7e3879a2d0ca6dd75e3cfd6cd8303411fc030304aa072d1f5da9c7972533cd7b",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/rmw_zenoh_cpp/0.10.4-1.rcr.1/source.json": "96ae9a219a5b78b80fa2b78479330c4de8425ff2011a24b93f345f360b750efc",
+    "https://intrinsic-opensource.github.io/ros-central-registry/modules/robin-map/1.4.0/MODULE.bazel": "not found",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/robot_state_publisher/3.5.5-3.rcr.1/MODULE.bazel": "b89890608d105e42233d3e2daf2f82c0cad80e278ec2daeb3a4200c5de8c61b6",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/robot_state_publisher/3.5.5-3.rcr.1/source.json": "9335d8ea1d0fc44de746ce902086a586faf7247a7c84490726f177ed6a293371",
     "https://intrinsic-opensource.github.io/ros-central-registry/modules/ros_environment/4.5.1-1.rcr.1/MODULE.bazel": "252f5be02ca6e57dba0991fa7a82b8400af64afdb255482a7337212b1402f412",
@@ -1999,6 +2005,39 @@
                 "rules_rs": "0.0.93",
                 "aspect_tools_telemetry": "0.3.3"
               }
+            }
+          }
+        }
+      }
+    },
+    "@@nanobind_bazel+//:internal_configure.bzl%internal_configure_extension": {
+      "general": {
+        "bzlTransitiveDigest": "7BssUsx8Qa9nRhMb/fUfsb9EiQA6qWc5bUiJZ6KqduE=",
+        "usagesDigest": "G3BA/KImifIZfbT9eklFYVNIzLrjPgsHbEWQwbA2uGY=",
+        "recordedInputs": [
+          "REPO_MAPPING:nanobind_bazel+,bazel_tools bazel_tools"
+        ],
+        "generatedRepoSpecs": {
+          "nanobind": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "build_file": "@@nanobind_bazel+//:nanobind.BUILD",
+              "strip_prefix": "nanobind-2.12.0",
+              "integrity": "sha256-AfHwzQOYdDwY8z0HrjatQQvX9KHpBoO1CFBN6JfW5ik=",
+              "urls": [
+                "https://github.com/wjakob/nanobind/archive/refs/tags/v2.12.0.tar.gz"
+              ]
+            }
+          },
+          "pypi__typing_extensions": {
+            "repoRuleId": "@@bazel_tools//tools/build_defs/repo:http.bzl%http_archive",
+            "attributes": {
+              "build_file": "@@nanobind_bazel+//:typing_extensions.BUILD",
+              "strip_prefix": "typing_extensions-4.15.0",
+              "integrity": "sha256-DOpI0XPMEvoo7KvDuDfqPPbzjG0RNvhcuq9ZiYSGFGY=",
+              "urls": [
+                "https://files.pythonhosted.org/packages/72/94/1a15dd82efb362ac84269196e94cf00f187f7ed21c242792a923cdb1c61f/typing_extensions-4.15.0.tar.gz"
+              ]
             }
           }
         }

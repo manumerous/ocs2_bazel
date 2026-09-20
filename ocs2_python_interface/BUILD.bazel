@@ -1,0 +1,77 @@
+load("@nanobind_bazel//:build_defs.bzl", "nanobind_extension")
+load("@pip_deps//:requirements.bzl", "requirement")
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_python//python:py_test.bzl", "py_test")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_COPTS", "OCS2_LINKOPTS", "OCS2_TEST_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+# Plain C++ library -- has zero pybind11/nanobind dependency itself; only
+# PybindMacros.h (used by downstream per-robot Python binding modules, and
+# by the test module below) needs nanobind.
+cc_library(
+    name = "ocs2_python_interface",
+    srcs = ["src/PythonInterface.cpp"],
+    hdrs = glob(["include/**/*.h"]),
+    copts = OCS2_COPTS,
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_core",
+        "//ocs2_ddp",
+        "//ocs2_mpc",
+        "//ocs2_oc",
+        "//ocs2_robotic_tools",
+        "@eigen",
+    ],
+)
+
+# Plain C++ test -- exercises PythonInterface directly, no bindings involved.
+cc_test(
+    name = "test_dummy_py_bindings",
+    size = "small",
+    srcs = ["test/testDummyPyBindings.cpp"],
+    copts = OCS2_TEST_COPTS,
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        ":ocs2_python_interface",
+        "//ocs2_core",
+        "//ocs2_ddp",
+        "//ocs2_oc",
+        "//ocs2_robotic_tools",
+        "@googletest//:gtest_main",
+    ],
+)
+
+# Real nanobind extension module, built from the same CREATE_ROBOT_PYTHON_BINDINGS
+# macro any robot-specific bindings would use -- proves the ported macro
+# actually produces a working Python module, not just that it compiles.
+# The target name must match the LIB_NAME passed to CREATE_ROBOT_PYTHON_BINDINGS
+# in testDummyPyBindingsModule.cc (it becomes the compiled-in Python module
+# init symbol).
+nanobind_extension(
+    name = "test_dummy_py_bindings_module",
+    srcs = ["test/testDummyPyBindingsModule.cc"],
+    copts = OCS2_TEST_COPTS,
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        ":ocs2_python_interface",
+        "//ocs2_core",
+        "//ocs2_ddp",
+        "//ocs2_oc",
+        "//ocs2_robotic_tools",
+        "@eigen",
+    ],
+)
+
+py_test(
+    name = "test_dummy_py_bindings_py",
+    size = "small",
+    srcs = ["test/test_dummy_py_bindings.py"],
+    main = "test/test_dummy_py_bindings.py",
+    data = [":test_dummy_py_bindings_module"],
+    deps = [
+        "@rules_python//python/runfiles",
+        requirement("numpy"),
+    ],
+)
