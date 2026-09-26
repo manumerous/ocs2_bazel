@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
 load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
 
 package(default_visibility = ["//visibility:public"])
@@ -45,4 +46,52 @@ cc_binary(
     copts = OCS2_ROS2_COPTS,
     linkopts = OCS2_LINKOPTS,
     deps = _DEPS,
+)
+
+# ---------------------------------------------------------------------------
+# Bringup: replaces double_integrator.launch.py's node set (minus rviz --
+# rviz2 isn't a Bazel target in this workspace; see the MODULE.bazel note on
+# RCR scope).
+#
+#   bazel run //ocs2_robotic_examples/ocs2_double_integrator_ros:bringup_double_integrator
+#
+# starts the MPC solver and the dummy simulator together, one terminal, one
+# Ctrl-C stops both. double_integrator_target (the interactive pose
+# commander) is NOT included: it blocks on interactive std::cin
+# (TargetTrajectoriesKeyboardPublisher), and rules_multirun's parallel mode
+# can't give it its own terminal or route keystrokes to just one command --
+# that's exactly what its `gnome-terminal --` window did in the old launch
+# file. Run it on demand, in its own terminal, via:
+#
+#   bazel run //ocs2_robotic_examples/ocs2_double_integrator_ros:run_double_integrator_target
+#
+# All targets default to task_name="mpc", matching the old launch file.
+command(
+    name = "_bringup_double_integrator_mpc",
+    arguments = ["mpc"],
+    command = ":double_integrator_mpc",
+    description = "mpc solver (double_integrator_mpc)",
+)
+
+command(
+    name = "_bringup_double_integrator_dummy",
+    arguments = ["mpc"],
+    command = ":double_integrator_dummy_test",
+    description = "dummy simulator (double_integrator_dummy_test)",
+)
+
+multirun(
+    name = "bringup_double_integrator",
+    commands = [
+        ":_bringup_double_integrator_mpc",
+        ":_bringup_double_integrator_dummy",
+    ],
+    jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
+)
+
+command(
+    name = "run_double_integrator_target",
+    arguments = ["mpc"],
+    command = ":double_integrator_target",
+    description = "interactive pose commander (double_integrator_target) -- run in its own terminal",
 )

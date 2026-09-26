@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
 load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
 
 package(default_visibility = ["//visibility:public"])
@@ -88,14 +89,14 @@ cc_binary(
     ],
 )
 
-    # Matches the original CMakeLists.txt exactly: ballbot_dummy_test and
-    # ballbot_mpc_mrt each compile BallbotDummyVisualization.cpp directly
-    # into the binary (`add_executable(ballbot_dummy_test
-    # src/DummyBallbotNode.cpp src/BallbotDummyVisualization.cpp)`) rather
-    # than linking against the "ocs2_ballbot_ros" library -- so those two
-    # binaries do the same here, plus glob(["include/**/*.h"]) since
-    # they're compiling BallbotDummyVisualization.h's implementation
-    # directly rather than picking it up via the library target's hdrs.
+# Matches the original CMakeLists.txt exactly: ballbot_dummy_test and
+# ballbot_mpc_mrt each compile BallbotDummyVisualization.cpp directly
+# into the binary (`add_executable(ballbot_dummy_test
+# src/DummyBallbotNode.cpp src/BallbotDummyVisualization.cpp)`) rather
+# than linking against the "ocs2_ballbot_ros" library -- so those two
+# binaries do the same here, plus glob(["include/**/*.h"]) since
+# they're compiling BallbotDummyVisualization.h's implementation
+# directly rather than picking it up via the library target's hdrs.
 cc_binary(
     name = "ballbot_dummy_test",
     srcs = [
@@ -118,4 +119,87 @@ cc_binary(
     includes = ["include"],
     linkopts = OCS2_LINKOPTS,
     deps = _DEPS,
+)
+
+# ---------------------------------------------------------------------------
+# Bringup: replaces ballbot_ddp.launch / ballbot_slp.launch (minus rviz --
+# rviz2 isn't a Bazel target in this workspace; see the MODULE.bazel note on
+# RCR scope). `ballbot_sqp` has no bringup since `ballbot_sqp` itself isn't
+# buildable (dead ROS1 code, see the note above).
+#
+#   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_ddp
+#   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_slp
+#
+# each starts its MPC solver together with the dummy simulator, one terminal,
+# one Ctrl-C stops both. ballbot_target (the interactive pose commander) is
+# NOT included: it blocks on interactive std::cin
+# (TargetTrajectoriesKeyboardPublisher), and rules_multirun's parallel mode
+# can't give it its own terminal or route keystrokes to just one command --
+# that's exactly what its `gnome-terminal --` window did in the old launch
+# file. Run it on demand, in its own terminal, via:
+#
+#   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:run_ballbot_target
+#
+# All targets default to task_name="mpc", matching the old launch files.
+command(
+    name = "_bringup_ballbot_ddp_mpc",
+    arguments = ["mpc"],
+    command = ":ballbot_ddp",
+    description = "mpc solver (ballbot_ddp)",
+)
+
+command(
+    name = "_bringup_ballbot_ddp_dummy",
+    arguments = ["mpc"],
+    command = ":ballbot_dummy_test",
+    description = "dummy simulator (ballbot_dummy_test)",
+)
+
+multirun(
+    name = "bringup_ballbot_ddp",
+    commands = [
+        ":_bringup_ballbot_ddp_mpc",
+        ":_bringup_ballbot_ddp_dummy",
+    ],
+    jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
+)
+
+command(
+    name = "_bringup_ballbot_slp_mpc",
+    arguments = ["mpc"],
+    command = ":ballbot_slp",
+    description = "mpc solver (ballbot_slp)",
+)
+
+command(
+    name = "_bringup_ballbot_slp_dummy",
+    arguments = ["mpc"],
+    command = ":ballbot_dummy_test",
+    description = "dummy simulator (ballbot_dummy_test)",
+)
+
+multirun(
+    name = "bringup_ballbot_slp",
+    commands = [
+        ":_bringup_ballbot_slp_mpc",
+        ":_bringup_ballbot_slp_dummy",
+    ],
+    jobs = 0,
+)
+
+# ballbot_mpc_mrt.launch: MPC and MRT loop run in a single combined process
+# (ballbot_mpc_mrt), so there's nothing to multirun here -- just the one
+# process with its task_name argument baked in.
+command(
+    name = "bringup_ballbot_mpc_mrt",
+    arguments = ["mpc"],
+    command = ":ballbot_mpc_mrt",
+    description = "combined mpc+mrt loop (ballbot_mpc_mrt)",
+)
+
+command(
+    name = "run_ballbot_target",
+    arguments = ["mpc"],
+    command = ":ballbot_target",
+    description = "interactive pose commander (ballbot_target) -- run in its own terminal",
 )

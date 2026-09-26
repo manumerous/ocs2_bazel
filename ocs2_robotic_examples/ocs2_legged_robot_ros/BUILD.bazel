@@ -1,4 +1,5 @@
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
 load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
 
 package(default_visibility = ["//visibility:public"])
@@ -81,4 +82,75 @@ cc_binary(
     copts = OCS2_ROS2_COPTS,
     linkopts = OCS2_LINKOPTS,
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
+)
+
+# ---------------------------------------------------------------------------
+# Bringup: replaces anymal.launch.py's node set (minus rviz -- rviz2 isn't a
+# Bazel target in this workspace; see the MODULE.bazel note on RCR scope).
+# Only the DDP solver is wired here since legged_robot_sqp_mpc/
+# legged_robot_ipm_mpc aren't buildable (see the dead-code note above).
+#
+#   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal
+#
+# starts the MPC solver and the dummy simulator together, streaming both
+# logs to one terminal; Ctrl-C stops both. The pose and gait commanders are
+# NOT part of this multirun: both block on interactive std::cin
+# (TargetTrajectoriesKeyboardPublisher / GaitKeyboardPublisher), and
+# rules_multirun's parallel mode has no way to give each command its own
+# terminal or route keystrokes to just one of them -- that's exactly what
+# separate `gnome-terminal --` windows did in the old launch file. Run them
+# on demand, each in its own terminal, via:
+#
+#   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_target
+#   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_gait_command
+#
+# All four commands default to the same (task_name="mpc", reference_name=
+# "command") pair anymal.launch.py used.
+command(
+    name = "_bringup_anymal_mpc",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_ddp_mpc",
+    description = "mpc solver (legged_robot_ddp_mpc)",
+)
+
+command(
+    name = "_bringup_anymal_dummy",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_dummy",
+    description = "dummy simulator (legged_robot_dummy)",
+)
+
+multirun(
+    name = "bringup_anymal",
+    commands = [
+        ":_bringup_anymal_mpc",
+        ":_bringup_anymal_dummy",
+    ],
+    jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
+)
+
+command(
+    name = "run_anymal_target",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_target",
+    description = "interactive pose commander (legged_robot_target) -- run in its own terminal",
+)
+
+command(
+    name = "run_anymal_gait_command",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_gait_command",
+    description = "interactive gait commander (legged_robot_gait_command) -- run in its own terminal",
 )
