@@ -30,3 +30,6 @@ bazel build //...
 bazel test //...
 ```
 
+See [ocs2_robotic_examples/README.md](ocs2_robotic_examples/README.md) for
+how to run the robot examples (double integrator, ballbot, legged robot).
+
