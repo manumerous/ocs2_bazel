@@ -9,10 +9,6 @@ package(default_visibility = ["//visibility:public"])
 # Still skipped, as genuine pre-existing dead code (not migration
 # casualties -- matches the repo-wide finding that no CI ever builds this
 # ROS2 tree):
-#   - `ballbot_sqp` (BallbotSqpMpcNode.cpp) still `#include`s
-#     `<ros/init.h>`/`<ros/package.h>`/`<ocs2_ros_interfaces/...>` --
-#     genuine ROS1-era code referencing the out-of-scope legacy
-#     `ocs2_ros_interfaces` package, not a mechanical build-system port.
 #   - `ballbot_integration_test` (test/ballbotIntegrationTest.cpp) is the
 #     same kind of ROS1-era dead code; its own CMakeLists.txt registration
 #     is also missing the `find_package(ament_cmake_gtest)` its own
@@ -62,6 +58,21 @@ cc_binary(
         "//ocs2_ddp",
         "//ocs2_robotic_examples/ocs2_ballbot",
         "//ocs2_ros2_interfaces",
+        "@ament_index_cpp//:ament_index_cpp_library",
+        "@rclcpp//:rclcpp_library",
+    ],
+)
+
+cc_binary(
+    name = "ballbot_sqp",
+    srcs = ["src/BallbotSqpMpcNode.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_ballbot:ament_index"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_robotic_examples/ocs2_ballbot",
+        "//ocs2_ros2_interfaces",
+        "//ocs2_sqp/ocs2_sqp",
         "@ament_index_cpp//:ament_index_cpp_library",
         "@rclcpp//:rclcpp_library",
     ],
@@ -129,13 +140,13 @@ cc_binary(
 )
 
 # ---------------------------------------------------------------------------
-# Bringup: replaces ballbot_ddp.launch / ballbot_slp.launch (minus rviz --
-# rviz2 isn't a Bazel target in this workspace; see the MODULE.bazel note on
-# RCR scope). `ballbot_sqp` has no bringup since `ballbot_sqp` itself isn't
-# buildable (dead ROS1 code, see the note above).
+# Bringup: replaces ballbot_ddp.launch / ballbot_slp.launch / ballbot_sqp.launch
+# (minus rviz -- rviz2 isn't a Bazel target in this workspace; see the
+# MODULE.bazel note on RCR scope).
 #
 #   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_ddp
 #   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_slp
+#   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_sqp
 #
 # each starts its MPC solver together with the dummy simulator, one terminal,
 # one Ctrl-C stops both. ballbot_target (the interactive pose commander) is
@@ -190,6 +201,29 @@ multirun(
     commands = [
         ":_bringup_ballbot_slp_mpc",
         ":_bringup_ballbot_slp_dummy",
+    ],
+    jobs = 0,
+)
+
+command(
+    name = "_bringup_ballbot_sqp_mpc",
+    arguments = ["mpc"],
+    command = ":ballbot_sqp",
+    description = "mpc solver (ballbot_sqp)",
+)
+
+command(
+    name = "_bringup_ballbot_sqp_dummy",
+    arguments = ["mpc"],
+    command = ":ballbot_dummy_test",
+    description = "dummy simulator (ballbot_dummy_test)",
+)
+
+multirun(
+    name = "bringup_ballbot_sqp",
+    commands = [
+        ":_bringup_ballbot_sqp_mpc",
+        ":_bringup_ballbot_sqp_dummy",
     ],
     jobs = 0,
 )
