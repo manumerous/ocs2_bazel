@@ -5,21 +5,22 @@ load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
 
 package(default_visibility = ["//visibility:public"])
 
-# NOTE (dead pre-existing code, not migration casualties -- matches the
+# NOTE (dead pre-existing code, not a migration casualty -- matches the
 # repo-wide "no CI ever builds this ROS2 tree" finding):
 #   - `legged_robot_ipm_mpc` (LeggedRobotIpmMpcNode.cpp) still
 #     `#include`s `<ros/init.h>`/`<ros/package.h>`/
 #     `<ocs2_ros_interfaces/...>` -- genuine ROS1-era code.
-#   - `legged_robot_sqp_mpc` (LeggedRobotSqpMpcNode.cpp) is otherwise
-#     clean ROS2, but includes
-#     `<ocs2_ros_interfaces/synchronized_module/SolverObserverRosCallbacks.h>`
-#     -- that header exists *only* in the out-of-scope legacy
-#     `ocs2_ros_interfaces` package; there's no ocs2_ros2_interfaces
-#     equivalent to redirect to (confirmed: it was never ported), so
-#     unlike the MultipleShootingMpc/modifyReferences-style fixes
-#     elsewhere in this migration, fixing this would mean *porting a new
-#     ROS2 feature* (solver-observer-over-ROS callbacks), not a
-#     mechanical rename -- out of scope for this migration.
+#
+# `legged_robot_sqp_mpc` (LeggedRobotSqpMpcNode.cpp) was otherwise clean
+# ROS2 already, apart from including
+# `<ocs2_ros_interfaces/synchronized_module/SolverObserverRosCallbacks.h>`
+# for an optional multiplot friction-cone/zero-velocity constraint
+# observer -- that header exists only in the out-of-scope legacy
+# `ocs2_ros_interfaces` package, with no ocs2_ros2_interfaces equivalent
+# (confirmed: it was never ported). Rather than port that ROS2 feature,
+# the node below drops the multiplot observer hookup entirely and mirrors
+# LeggedRobotDdpMpcNode.cpp's plain MPC_ROS_Interface wiring with SqpMpc
+# in place of GaussNewtonDDP_MPC.
 _DEPS = [
     "//ocs2_core",
     "//ocs2_ddp",
@@ -83,6 +84,21 @@ cc_binary(
 )
 
 cc_binary(
+    name = "legged_robot_sqp_mpc",
+    srcs = ["src/LeggedRobotSqpMpcNode.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    data = [
+        ":ament_index",
+        "//ocs2_robotic_examples/ocs2_legged_robot:ament_index",
+    ],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        ":ocs2_legged_robot_ros",
+        "//ocs2_sqp/ocs2_sqp",
+    ] + _DEPS,
+)
+
+cc_binary(
     name = "legged_robot_dummy",
     srcs = ["src/LeggedRobotDummyNode.cpp"],
     copts = OCS2_ROS2_COPTS,
@@ -117,10 +133,11 @@ cc_binary(
 # ---------------------------------------------------------------------------
 # Bringup: replaces anymal.launch.py's node set (minus rviz -- rviz2 isn't a
 # Bazel target in this workspace; see the MODULE.bazel note on RCR scope).
-# Only the DDP solver is wired here since legged_robot_sqp_mpc/
-# legged_robot_ipm_mpc aren't buildable (see the dead-code note above).
+# legged_robot_ipm_mpc isn't wired here since it isn't buildable (see the
+# dead-code note above).
 #
 #   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal
+#   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal_sqp
 #
 # starts the MPC solver and the dummy simulator together, streaming both
 # logs to one terminal; Ctrl-C stops both. The pose and gait commanders are
@@ -160,6 +177,25 @@ multirun(
     name = "bringup_anymal",
     commands = [
         ":_bringup_anymal_mpc",
+        ":_bringup_anymal_dummy",
+    ],
+    jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
+)
+
+command(
+    name = "_bringup_anymal_sqp_mpc",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_sqp_mpc",
+    description = "mpc solver (legged_robot_sqp_mpc)",
+)
+
+multirun(
+    name = "bringup_anymal_sqp",
+    commands = [
+        ":_bringup_anymal_sqp_mpc",
         ":_bringup_anymal_dummy",
     ],
     jobs = 0,  # 0 == run in parallel, like separate launch-file terminals

@@ -37,32 +37,31 @@ DDP is its only solver variant.
 ## Ballbot (`ocs2_ballbot[_ros]`)
 
 ```
-# bringup: mpc solver + dummy simulator (ddp or slp), or the combined mpc+mrt loop
+# bringup: mpc solver + dummy simulator (ddp, slp, or sqp), or the combined mpc+mrt loop
 bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_ddp
 bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_slp
+bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_sqp
 bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_mpc_mrt   # single combined process
 
 # interactive pose commander -- run alongside, in its own terminal
 bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:run_ballbot_target
 ```
 
-DDP, SLP, and the combined MPC+MRT loop are all buildable. `ballbot_sqp` is
-not: it still includes ROS1-only headers (`<ros/init.h>`,
-`<ocs2_ros_interfaces/...>`) -- pre-existing dead code, not something the
-Bazel/ROS2 migration skipped.
+DDP, SLP, SQP, and the combined MPC+MRT loop are all buildable.
 
 ## Legged robot / ANYmal (`ocs2_legged_robot[_ros]`)
 
 ```
-# bringup: mpc solver + dummy simulator
+# bringup: mpc solver + dummy simulator (ddp or sqp)
 bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal
+bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal_sqp
 
 # interactive pose/gait commanders -- run alongside, each in its own terminal
 bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_target
 bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_gait_command
 ```
 
-DDP is the only buildable solver variant: `legged_robot_sqp_mpc` and
-`legged_robot_ipm_mpc` both reference the out-of-scope legacy
-`ocs2_ros_interfaces` package (never ported to ROS2) -- pre-existing dead
-code, not something the Bazel/ROS2 migration skipped.
+DDP and SQP are buildable. `legged_robot_ipm_mpc` is not: it still
+references the out-of-scope legacy `ocs2_ros_interfaces` package (never
+ported to ROS2) -- pre-existing dead code, not something the Bazel/ROS2
+migration skipped.
