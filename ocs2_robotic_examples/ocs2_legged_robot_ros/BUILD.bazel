@@ -1,3 +1,4 @@
+load("@rosdistro//ament:defs.bzl", "ament_index")
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
 load("@rules_multirun//:defs.bzl", "command", "multirun")
 load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
@@ -38,6 +39,19 @@ _DEPS = [
     "@visualization_msgs//:cc",
 ]
 
+# Makes urdf/urdf/anymal.urdf (+ meshes) show up at runtime under
+# share/ocs2_legged_robot_ros/ in the runfiles tree, so
+# ament_index_cpp::get_package_share_directory("ocs2_legged_robot_ros")
+# (called from LeggedRobotDdpMpcNode/LeggedRobotDummyNode) can find it
+# without a real ROS install / AMENT_PREFIX_PATH -- see
+# @rosdistro//ament:defs.bzl.
+ament_index(
+    name = "ament_index",
+    data = glob(["urdf/**"]),
+    data_strip_prefix = "ocs2_robotic_examples/ocs2_legged_robot_ros",
+    export_name = "ocs2_legged_robot_ros",
+)
+
 cc_library(
     name = "ocs2_legged_robot_ros",
     srcs = [
@@ -52,10 +66,18 @@ cc_library(
     deps = _DEPS,
 )
 
+# data: makes ament_index_cpp::get_package_share_directory("ocs2_legged_robot")
+# (config/*.info) and ("ocs2_legged_robot_ros") (urdf/urdf/anymal.urdf)
+# resolve at runtime -- see the ament_index targets in
+# ocs2_legged_robot/BUILD.bazel and above.
 cc_binary(
     name = "legged_robot_ddp_mpc",
     srcs = ["src/LeggedRobotDdpMpcNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = [
+        ":ament_index",
+        "//ocs2_robotic_examples/ocs2_legged_robot:ament_index",
+    ],
     linkopts = OCS2_LINKOPTS,
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
 )
@@ -64,22 +86,30 @@ cc_binary(
     name = "legged_robot_dummy",
     srcs = ["src/LeggedRobotDummyNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = [
+        ":ament_index",
+        "//ocs2_robotic_examples/ocs2_legged_robot:ament_index",
+    ],
     linkopts = OCS2_LINKOPTS,
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
 )
 
+# data: legged_robot_target only needs ocs2_legged_robot's config/reference.info.
 cc_binary(
     name = "legged_robot_target",
     srcs = ["src/LeggedRobotPoseCommandNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_legged_robot:ament_index"],
     linkopts = OCS2_LINKOPTS,
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
 )
 
+# data: legged_robot_gait_command only needs ocs2_legged_robot's config/gait.info.
 cc_binary(
     name = "legged_robot_gait_command",
     srcs = ["src/LeggedRobotGaitCommandNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_legged_robot:ament_index"],
     linkopts = OCS2_LINKOPTS,
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
 )

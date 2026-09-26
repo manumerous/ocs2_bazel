@@ -49,10 +49,14 @@ cc_library(
     deps = _DEPS,
 )
 
+# data: makes ament_index_cpp::get_package_share_directory("ocs2_ballbot")
+# (config/task.info, auto_generated/) resolve at runtime -- see the
+# ament_index target in ocs2_ballbot/BUILD.bazel.
 cc_binary(
     name = "ballbot_ddp",
     srcs = ["src/BallbotDdpMpcNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_ballbot:ament_index"],
     linkopts = OCS2_LINKOPTS,
     deps = [
         "//ocs2_ddp",
@@ -67,6 +71,7 @@ cc_binary(
     name = "ballbot_slp",
     srcs = ["src/BallbotSlpMpcNode.cpp"],
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_ballbot:ament_index"],
     linkopts = OCS2_LINKOPTS,
     deps = [
         "//ocs2_robotic_examples/ocs2_ballbot",
@@ -104,6 +109,7 @@ cc_binary(
         "src/DummyBallbotNode.cpp",
     ] + glob(["include/**/*.h"]),
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_ballbot:ament_index"],
     includes = ["include"],
     linkopts = OCS2_LINKOPTS,
     deps = _DEPS,
@@ -116,6 +122,7 @@ cc_binary(
         "src/BallbotMpcMrtNode.cpp",
     ] + glob(["include/**/*.h"]),
     copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_ballbot:ament_index"],
     includes = ["include"],
     linkopts = OCS2_LINKOPTS,
     deps = _DEPS,
