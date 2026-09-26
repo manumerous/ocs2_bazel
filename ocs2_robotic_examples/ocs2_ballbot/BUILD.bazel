@@ -1,3 +1,4 @@
+load("@rosdistro//ament:defs.bzl", "ament_index")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("//bazel:ocs2_cxx_flags.bzl", "OCS2_COPTS", "OCS2_LINKOPTS")
 
@@ -38,4 +39,19 @@ cc_library(
 filegroup(
     name = "config",
     srcs = glob(["config/**"]),
+)
+
+# Makes config/task.info and auto_generated/ show up at runtime under
+# share/ocs2_ballbot/ in the runfiles tree, so
+# ament_index_cpp::get_package_share_directory("ocs2_ballbot") (called from
+# ocs2_ballbot_ros's nodes) can find them without a real ROS install /
+# AMENT_PREFIX_PATH -- see @rosdistro//ament:defs.bzl.
+ament_index(
+    name = "ament_index",
+    data = glob([
+        "config/**",
+        "auto_generated/**",
+    ]),
+    data_strip_prefix = "ocs2_robotic_examples/ocs2_ballbot",
+    export_name = "ocs2_ballbot",
 )

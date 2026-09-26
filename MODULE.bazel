@@ -26,6 +26,12 @@ bazel_dep(name = "bazel_skylib", version = "1.9.2")
 bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "platforms", version = "1.1.0")
 
+# rules_multirun: lets a single `bazel run` bring up several node binaries at
+# once (in parallel, one Ctrl-C stops them all together). Used by the
+# `bringup_*` targets in the ocs2_*_ros example packages, which replace the
+# old catkin/ROS1 .launch files' multi-terminal `roslaunch` behavior.
+bazel_dep(name = "rules_multirun", version = "0.14.0")
+
 # DEVIATION FROM PLAN: the plan called for eigen 3.4.0.bcr.3 "to avoid a
 # version-conflict override", but in practice something else in the resolved
 # BCR graph (not any RCR/ROS module -- none of them declare a bazel_dep on
