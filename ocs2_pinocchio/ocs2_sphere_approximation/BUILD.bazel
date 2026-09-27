@@ -1,0 +1,32 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+# NOTE: test/testPinocchioSphereKinematics.cpp isn't wired up as a cc_test here -- it needs
+# ocs2::robotic_assets::getPath() (third_party/ocs2_robotic_assets's own package_path.h), which
+# per that overlay's own docstring is a documented "phase 5" TODO not finished yet for any
+# already-ported example package (ocs2_legged_robot/ocs2_ballbot don't have cc_test targets
+# either, for the same reason).
+cc_library(
+    name = "ocs2_sphere_approximation",
+    srcs = [
+        "src/PinocchioSphereInterface.cpp",
+        "src/PinocchioSphereKinematics.cpp",
+        "src/PinocchioSphereKinematicsCppAd.cpp",
+        "src/SphereApproximation.cpp",
+    ],
+    hdrs = glob(["include/**/*.h"]),
+    copts = OCS2_ROS2_COPTS + [
+        "-Wno-ignored-attributes",
+    ],
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_core",
+        "//ocs2_pinocchio/ocs2_pinocchio_interface",
+        "//ocs2_robotic_tools",
+        "@coal",
+        "@pinocchio",
+    ],
+)

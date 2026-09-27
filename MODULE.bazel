@@ -42,7 +42,7 @@ bazel_dep(name = "rules_multirun", version = "0.14.0")
 # NOTE: Eigen 5.x has real API/ABI differences from 3.4 (e.g. some deprecated
 # headers/aliases removed) -- expect this to need the same kind of
 # compile-and-fix pass as the pinocchio 4.x delta once ocs2_core is built.
-bazel_dep(name = "eigen", version = "5.0.1.bcr.1")
+bazel_dep(name = "eigen", version = "5.0.1.bcr.2")
 
 # All three pinned together to the same underlying Boost release actually
 # resolved by MVS (see note above -- 1.87.0 as called for by the plan gets
@@ -90,6 +90,21 @@ bazel_dep(name = "boost.logic", version = "1.90.0.bcr.1")
 # @urdfdom itself already depends on this transitively but doesn't
 # re-export the label, so it must be a direct dep to reference by name.
 bazel_dep(name = "urdfdom_headers", version = "3.0.0-3.rcr.1")
+
+# Coal (collision library, formerly hpp-fcl) -- brings back pinocchio's
+# collision/broadphase layer, needed by ocs2_self_collision. A real BCR
+# module (added 2026-09-22, github.com/coal-library/coal via
+# github.com/bazelbuild/bazel-central-registry/pull/10609), so used as-is
+# rather than the http_archive-overlay pattern used for pinocchio/orocos_kdl
+# (those have no registry module at all; coal does). Its own BCR module
+# declares these as hard deps (assimp for mesh loading, octomap/qhull for
+# optional-but-BCR-always-on octree/convex-hull support); boost.filesystem/
+# boost.math/boost.serialization are already pinned above at the same
+# version coal's module requests, so no MVS conflict.
+bazel_dep(name = "coal", version = "3.0.4")
+bazel_dep(name = "assimp", version = "6.0.5")
+bazel_dep(name = "octomap", version = "1.10.0")
+bazel_dep(name = "qhull", version = "8.0.2.bcr.2")
 
 bazel_dep(name = "googletest", version = "1.17.0.bcr.2", dev_dependency = True)
 
@@ -353,13 +368,14 @@ http_archive(
     patch_args = ["-p1"],
     patches = [
         "//patches:pinocchio-generated-config-hpp.patch",
+        "//patches:pinocchio-generated-collision-config-hpp.patch",
         "//patches:pinocchio-generated-deprecated-hpp.patch",
         "//patches:pinocchio-generated-warning-hpp.patch",
         "//patches:pinocchio-generated-parsers-config-hpp.patch",
     ],
-    sha256 = "e9ca048fd6c6e3f9e25ca691c7517c6cfdeb5218f03621dbe15ddeb7de2f9a1a",
-    strip_prefix = "pinocchio-4.0.0",
-    urls = ["https://github.com/stack-of-tasks/pinocchio/archive/refs/tags/v4.0.0.tar.gz"],
+    sha256 = "6088e6954883af233489cbabc391bc70b884f9a7a57cd79f11dd28bcad62e08d",
+    strip_prefix = "pinocchio-4.1.0",
+    urls = ["https://github.com/stack-of-tasks/pinocchio/archive/refs/tags/v4.1.0.tar.gz"],
 )
 
 # orocos_kdl + kdl_parser -- same situation as pinocchio above: RCR's own
