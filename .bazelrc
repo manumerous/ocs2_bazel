@@ -2,7 +2,7 @@
 # ROS Central Registry (RCR) for ROS2 "Lyrical Luth" packages.
 # The RCR registry is listed first so its modules take precedence when a
 # name exists in both (e.g. RCR's newer `pinocchio` vs BCR's stale one).
-common --registry=https://intrinsic-opensource.github.io/ros-central-registry
+common --registry=https://openrobotics.github.io/ros-central-registry
 common --registry=https://bcr.bazel.build
 
 # Test hermeticity, per RCR's own guidance for ROS2 interface/codegen tests.
