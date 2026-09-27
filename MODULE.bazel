@@ -413,3 +413,12 @@ http_archive(
     strip_prefix = "ocs2_robotic_assets-b126d00d55f1e67905c3c1516995466df6873c5c",
     url = "https://github.com/leggedrobotics/ocs2_robotic_assets/archive/b126d00d55f1e67905c3c1516995466df6873c5c.tar.gz",
 )
+
+# cpp-httplib -- single-header MIT-licensed HTTP server library.
+http_archive(
+    name = "httplib",
+    build_file = "//third_party/httplib:BUILD.httplib.bazel",
+    sha256 = "31932ce8b33f2905472a987dc1984b9d8a7d338083a066021349587cc5f1cfea",
+    strip_prefix = "cpp-httplib-0.58.0",
+    urls = ["https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.58.0.tar.gz"],
+)

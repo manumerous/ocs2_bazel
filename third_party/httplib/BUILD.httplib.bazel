@@ -1,0 +1,13 @@
+# BUILD overlay for @httplib (http_archive, real upstream cpp-httplib v0.58.0).
+# OpenSSL/zlib/brotli support is macro-gated and off by default, so this is a
+# plain header-only cc_library with no further third-party dependencies.
+
+load("@rules_cc//cc:defs.bzl", "cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "httplib",
+    hdrs = ["httplib.h"],
+    includes = ["."],
+)
