@@ -230,7 +230,7 @@ ScalarFunctionQuadraticApproximation CppAdInterface::getGaussNewtonApproximation
     gnApprox.dfdxx(col_i, col_i) += v_i * v_i;
     // Process off-diagonals
     size_t j = i + 1;
-    while (rows[j] == row_i) {
+    while (j < nnzJacobian_ && rows[j] == row_i) {
       const size_t col_j = cols[j];
       gnApprox.dfdxx(col_j, col_i) += v_i * sparseJacobian[j];
       gnApprox.dfdxx(col_i, col_j) = gnApprox.dfdxx(col_j, col_i);  // Maintain symmetry as we go.
