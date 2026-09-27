@@ -32,11 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ocs2_mobile_manipulator_ros/MobileManipulatorDummyVisualization.h>
 
 #include <ocs2_mpc/SystemObservation.h>
-#include <ocs2_ros_interfaces/mrt/MRT_ROS_Dummy_Loop.h>
-#include <ocs2_ros_interfaces/mrt/MRT_ROS_Interface.h>
+#include <ocs2_ros2_interfaces/mrt/MRT_ROS_Dummy_Loop.h>
+#include <ocs2_ros2_interfaces/mrt/MRT_ROS_Interface.h>
 
-#include <ros/init.h>
-#include <ros/package.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 using namespace ocs2;
 using namespace mobile_manipulator;
@@ -44,14 +44,26 @@ using namespace mobile_manipulator;
 int main(int argc, char** argv) {
   const std::string robotName = "mobile_manipulator";
 
+  // task file (relative to ocs2_mobile_manipulator/config/) and urdf file
+  // (relative to ocs2_robotic_assets/resources/mobile_manipulator/)
+  std::vector<std::string> programArgs = rclcpp::remove_ros_arguments(argc, argv);
+  if (programArgs.size() < 3) {
+    throw std::runtime_error(
+        "Usage: mobile_manipulator_dummy_mrt <task file, e.g. franka/task.info> <urdf file, e.g. franka/urdf/panda.urdf>");
+  }
+  const std::string taskFileName = programArgs[1];
+  const std::string urdfFileName = programArgs[2];
+
   // Initialize ros node
-  ros::init(argc, argv, robotName + "_mrt");
-  ros::NodeHandle nodeHandle;
+  rclcpp::init(argc, argv);
+  rclcpp::Node::SharedPtr nodeHandle = rclcpp::Node::make_shared(robotName + "_mrt");
+
   // Get node parameters
-  std::string taskFile, libFolder, urdfFile;
-  nodeHandle.getParam("/taskFile", taskFile);
-  nodeHandle.getParam("/libFolder", libFolder);
-  nodeHandle.getParam("/urdfFile", urdfFile);
+  const std::string taskFile = ament_index_cpp::get_package_share_directory("ocs2_mobile_manipulator") + "/config/" + taskFileName;
+  const std::string urdfFile =
+      ament_index_cpp::get_package_share_directory("ocs2_robotic_assets") + "/resources/mobile_manipulator/" + urdfFileName;
+  // CppAD codegen output, keyed by task file so e.g. kinova/task_j2n6 and kinova/task_j2n7 don't collide
+  const std::string libFolder = "/tmp/ocs2/mobile_manipulator/" + taskFileName.substr(0, taskFileName.rfind(".info"));
   std::cerr << "Loading task file: " << taskFile << std::endl;
   std::cerr << "Loading library folder: " << libFolder << std::endl;
   std::cerr << "Loading urdf file: " << urdfFile << std::endl;
@@ -61,10 +73,10 @@ int main(int argc, char** argv) {
   // MRT
   MRT_ROS_Interface mrt(robotName);
   mrt.initRollout(&interface.getRollout());
-  mrt.launchNodes(nodeHandle);
+  mrt.launchNodes(nodeHandle, rclcpp::QoS(1));
 
   // Visualization
-  auto dummyVisualization = std::make_shared<mobile_manipulator::MobileManipulatorDummyVisualization>(nodeHandle, interface);
+  auto dummyVisualization = std::make_shared<mobile_manipulator::MobileManipulatorDummyVisualization>(nodeHandle, interface, taskFile, urdfFile);
 
   // Dummy MRT
   MRT_ROS_Dummy_Loop dummy(mrt, interface.mpcSettings().mrtDesiredFrequency_, interface.mpcSettings().mpcDesiredFrequency_);

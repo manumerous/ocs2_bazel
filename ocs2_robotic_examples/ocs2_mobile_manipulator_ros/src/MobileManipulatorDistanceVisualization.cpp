@@ -41,9 +41,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <ocs2_mobile_manipulator/ManipulatorModelInfo.h>
 #include <ocs2_mobile_manipulator/MobileManipulatorInterface.h>
 
-#include <ros/package.h>
-#include <ros/ros.h>
-#include <sensor_msgs/JointState.h>
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 
 using namespace ocs2;
 using namespace mobile_manipulator;
@@ -52,11 +52,9 @@ std::unique_ptr<PinocchioInterface> pInterface;
 std::shared_ptr<PinocchioGeometryInterface> gInterface;
 std::unique_ptr<GeometryInterfaceVisualization> vInterface;
 
-sensor_msgs::JointState lastMsg;
+sensor_msgs::msg::JointState lastMsg;
 
-std::unique_ptr<ros::Publisher> pub;
-
-void jointStateCallback(sensor_msgs::JointStateConstPtr msg) {
+void jointStateCallback(const sensor_msgs::msg::JointState::ConstSharedPtr& msg) {
   if (lastMsg.position == msg->position) {
     return;
   }
@@ -72,13 +70,23 @@ void jointStateCallback(sensor_msgs::JointStateConstPtr msg) {
 }
 
 int main(int argc, char** argv) {
+  // task file (relative to ocs2_mobile_manipulator/config/) and urdf file
+  // (relative to ocs2_robotic_assets/resources/mobile_manipulator/)
+  std::vector<std::string> programArgs = rclcpp::remove_ros_arguments(argc, argv);
+  if (programArgs.size() < 3) {
+    throw std::runtime_error(
+        "Usage: mobile_manipulator_distance_visualization <task file, e.g. kinova/task_j2n6.info> "
+        "<urdf file, e.g. kinova/urdf/j2n6s300.urdf>");
+  }
+
   // Initialize ros node
-  ros::init(argc, argv, "distance_visualization");
-  ros::NodeHandle nodeHandle;
-  // Get ROS parameters
-  std::string urdfPath, taskFile;
-  nodeHandle.getParam("/taskFile", taskFile);
-  nodeHandle.getParam("/urdfFile", urdfPath);
+  rclcpp::init(argc, argv);
+  rclcpp::Node::SharedPtr nodeHandle = rclcpp::Node::make_shared("distance_visualization");
+
+  // Get node parameters
+  const std::string taskFile = ament_index_cpp::get_package_share_directory("ocs2_mobile_manipulator") + "/config/" + programArgs[1];
+  const std::string urdfPath =
+      ament_index_cpp::get_package_share_directory("ocs2_robotic_assets") + "/resources/mobile_manipulator/" + programArgs[2];
 
   // read the task file
   boost::property_tree::ptree pt;
@@ -118,13 +126,13 @@ int main(int argc, char** argv) {
   }
   std::cerr << std::endl;
 
-  gInterface.reset(new PinocchioGeometryInterface(*pInterface, selfCollisionLinkPairs, selfCollisionObjectPairs));
+  gInterface.reset(new PinocchioGeometryInterface(*pInterface, urdfPath, selfCollisionLinkPairs, selfCollisionObjectPairs));
 
   vInterface.reset(new GeometryInterfaceVisualization(*pInterface, *gInterface, nodeHandle, baseFrame));
 
-  ros::Subscriber sub = nodeHandle.subscribe("joint_states", 1, &jointStateCallback);
+  auto sub = nodeHandle->create_subscription<sensor_msgs::msg::JointState>("joint_states", 1, &jointStateCallback);
 
-  ros::spin();
+  rclcpp::spin(nodeHandle);
 
   return 0;
 }

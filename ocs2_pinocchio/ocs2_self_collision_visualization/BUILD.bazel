@@ -1,0 +1,25 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "ocs2_self_collision_visualization",
+    srcs = ["src/GeometryInterfaceVisualization.cpp"],
+    hdrs = glob(["include/**/*.h"]),
+    copts = OCS2_ROS2_COPTS + [
+        "-Wno-ignored-attributes",
+    ],
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_core",
+        "//ocs2_pinocchio/ocs2_pinocchio_interface",
+        "//ocs2_pinocchio/ocs2_self_collision",
+        "//ocs2_ros2_interfaces",
+        "@coal",
+        "@pinocchio",
+        "@rclcpp//:rclcpp_library",
+        "@visualization_msgs//:cc",
+    ],
+)

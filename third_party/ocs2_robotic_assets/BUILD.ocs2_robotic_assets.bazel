@@ -6,14 +6,15 @@ vendored anywhere in ocs2_ros2 today either -- CI just clones it), so it's
 pinned via http_archive to the HEAD of `main` as of 2026-09-20
 (b126d00d55f1e67905c3c1516995466df6873c5c).
 
-Placeholder for phase 1/2 dependency-graph wiring; the actual `data`/
-`ros_data` wiring into the example binaries, and a Bazel-appropriate
-replacement for the package's own CMake-`configure_file`'d
-`include/ocs2_robotic_assets/package_path.h` (which bakes in an absolute
-`${PROJECT_SOURCE_DIR}` path -- not meaningful inside a Bazel sandbox/
-runfiles tree), are finished in phase 5.
+Runtime access for ROS nodes goes through `:ament_index` below. Still
+missing is a Bazel-appropriate replacement for the package's own
+CMake-`configure_file`'d `include/ocs2_robotic_assets/package_path.h`
+(which bakes in an absolute `${PROJECT_SOURCE_DIR}` path -- not meaningful
+inside a Bazel sandbox/runfiles tree), which only the C++ tests need;
+that's finished in phase 5.
 """
 
+load("@rosdistro//ament:defs.bzl", "ament_index")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -23,7 +24,20 @@ filegroup(
     srcs = glob(["resources/**"]),
 )
 
+# Makes resources/** show up at runtime under share/ocs2_robotic_assets/ in
+# the runfiles tree, so
+# ament_index_cpp::get_package_share_directory("ocs2_robotic_assets") +
+# "/resources/..." resolves the same paths the old catkin launch files got
+# from $(find ocs2_robotic_assets)/resources/... -- see
+# @rosdistro//ament:defs.bzl. No data_strip_prefix needed: the rule already
+# strips this external repo's workspace root from each file path.
+ament_index(
+    name = "ament_index",
+    data = glob(["resources/**"]),
+    export_name = "ocs2_robotic_assets",
+)
+
 # TODO(phase 5): generate include/ocs2_robotic_assets/package_path.h with a
 # runfiles-relative path instead of upstream's absolute
-# ${PROJECT_SOURCE_DIR}, and export it from a cc_library alongside
-# `:resources` wired into the example binaries via `data`.
+# ${PROJECT_SOURCE_DIR}, and export it from a cc_library for the C++ tests
+# (e.g. ocs2_mobile_manipulator/test, ocs2_legged_robot/test).
