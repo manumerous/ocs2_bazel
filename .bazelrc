@@ -1,53 +1,17 @@
-# Bazel registries: Bazel Central Registry for generic C++ deps, and the
-# ROS Central Registry (RCR) for ROS2 "Lyrical Luth" packages.
-# The RCR registry is listed first so its modules take precedence when a
-# name exists in both (e.g. RCR's newer `pinocchio` vs BCR's stale one).
+# RCR listed first so it takes precedence over BCR for shared module names (e.g. pinocchio).
 common --registry=https://openrobotics.github.io/ros-central-registry
 common --registry=https://bcr.bazel.build
 
 # Test hermeticity, per RCR's own guidance for ROS2 interface/codegen tests.
 test --sandbox_default_allow_network=false
 
-# Default to optimized builds (-O2, -DNDEBUG). The default "fastbuild" mode
-# left Eigen's bounds-checking assertions on for every operation, which is
-# brutal for the DDP/SQP solver loop's dense linear algebra -- MPC was
-# visibly slow under it. (The CppAD-generated dynamics/constraint/kinematics
-# libraries were never affected by this: CppAdInterface compiles those at
-# runtime with its own hardcoded "-O3 -march=native -mtune=native
-# -ffast-math", independent of Bazel's compilation_mode.) Override with
-# `-c fastbuild` on the command line for a quicker edit/rebuild cycle while
-# developing.
+# Default to optimized builds; use -c fastbuild for a quicker edit/rebuild cycle.
 build --compilation_mode=opt
 
-# Disable Bazel's automatic intermediate .so generation for cc_library deps
-# shared by multiple binaries/tests ("dynamic_mode=default"). With it on,
-# Bazel builds e.g. ocs2_core as its own standalone .so, which must resolve
-# all of its symbols (including Boost.Log's) at *that* .so's link time --
-# and that broke with real "undefined reference to boost::log::..." errors
-# once the dependency graph got deep enough (ocs2_core -> boost.log).
-# Fully static internal linking matches what the original CMake build
-# actually produced anyway.
+# Static linking; dynamic_mode=default breaks boost.log symbol resolution at .so boundaries.
 build --dynamic_mode=off
 
-# @rosdistro's own `rmw` build setting defaults to "dynamic", which pulls
-# in *every* RMW middleware backend rclcpp can be built against --
-# including rmw_zenoh_cpp, which drags in a Rust toolchain (via zenoh-c's
-# Cargo build script) just to compile a plain C++ node. OCS2 doesn't need
-# runtime RMW switching; pin to the same default a plain ROS2 install
-# uses (rmw_fastrtps_cpp) instead of standing up a whole second
-# language's toolchain for a backend nothing here uses.
+# Avoid pulling in every RMW backend (rmw_zenoh_cpp needs a Rust toolchain); pin the default one.
 build --@rosdistro//:rmw=rmw_fastrtps_cpp
 
-# The existing CMake build pins C++14 (see ocs2_core/cmake/ocs2_cxx_flags.cmake).
-# Preserve that for OCS2's own targets -- but deliberately NOT as a global
-# --cxxopt here, since that would also force every external dependency
-# (including googletest, which the RCR/BCR-resolved graph only offers as
-# >=1.17.0.bcr.2 and which hard #errors below C++17: "C++ versions less
-# than C++17 are not supported.") down to C++14 too. Instead, "-std=c++14"
-# is added directly to OCS2_COPTS (bazel/ocs2_cxx_flags.bzl) on OCS2's own
-# cc_library/cc_binary targets only, and "-std=c++17" to OCS2_TEST_COPTS
-# for cc_test targets that pull in gtest. Everything else (external deps)
-# is left on the toolchain's own ambient default, which happens to already
-# be gnu++17 on the GCC 13 this was verified against -- if building on a
-# GCC/Clang whose *default* is older than C++17, googletest would need an
-# explicit --cxxopt=-std=c++17 added back here.
+# OCS2's own targets stay on C++14 (bazel/ocs2_cxx_flags.bzl); external deps use the toolchain default.
