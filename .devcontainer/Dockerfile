@@ -1,6 +1,7 @@
-# Mirrors the image and system deps the CI workflow builds with
-# (.github/workflows/bazel-build-test.yml), so a local devcontainer build is
-# the same environment CI already validates -- not a separate, unverified one.
+# Same Ubuntu 24.04 base and system deps as the native CI job
+# (.github/workflows/bazel-build-test.yml). CI also builds and tests inside
+# this exact devcontainer on a linux/arm64 runner (the devcontainer-arm64
+# job), so the Apple Silicon devcontainer path is validated too.
 FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

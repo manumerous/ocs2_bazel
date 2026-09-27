@@ -7,26 +7,31 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:24.04
+  # Build and test directly on the Ubuntu 24.04 runner host (x86_64), with no
+  # container in between.
+  native-ubuntu:
+    name: Native (ubuntu-24.04, x86_64)
+    runs-on: ubuntu-24.04
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: System deps
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
             build-essential python3 python3-dev git curl ca-certificates patch unzip
-
-      - uses: actions/checkout@v4
 
       - name: Install Bazel (bazelisk, pinned via .bazelversion)
         run: |
-          curl -fsSL -o /usr/local/bin/bazel \
+          sudo curl -fsSL -o /usr/local/bin/bazel \
             https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64
-          chmod +x /usr/local/bin/bazel
+          sudo chmod +x /usr/local/bin/bazel
           bazel --version
 
       - name: Cache Bazel
@@ -40,10 +45,10 @@ jobs:
           # cache would freeze at whatever the first run produced and never
           # pick up later incremental build/test outputs). restore-keys falls
           # back to the closest previous cache by prefix match.
-          key: bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}-${{ github.run_id }}
+          key: bazel-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock') }}-${{ github.run_id }}
           restore-keys: |
-            bazel-${{ runner.os }}-${{ hashFiles('MODULE.bazel.lock') }}-
-            bazel-${{ runner.os }}-
+            bazel-native-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock') }}-
+            bazel-native-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Build
         run: bazel build --keep_going //...
@@ -55,6 +60,90 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bazel-testlogs
+          name: bazel-testlogs-native-ubuntu
           path: bazel-testlogs/
           if-no-files-found: ignore
+
+  # Build and test inside the exact .devcontainer used for local development,
+  # on an arm64 host. This is the same linux/arm64 container that Docker
+  # Desktop / Colima runs on Apple Silicon Macs. (GitHub's hosted macOS
+  # runners can't run Docker at all -- no nested virtualization on Apple
+  # Silicon -- so an arm64 Linux runner is how the Mac devcontainer path gets
+  # covered in CI.)
+  devcontainer-arm64:
+    name: Devcontainer (linux/arm64, as on Apple Silicon)
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      # devcontainer.json keeps the Bazel output base in the named volume
+      # `ocs2_bazel-cache`. Rather than overriding that mount for CI (which
+      # would make this job test a different config than developers use),
+      # seed the volume from a tarball in the Actions cache before the
+      # container starts, and export it again afterwards.
+      - name: Restore Bazel cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/bazel-cache.tar
+          key: bazel-devcontainer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            bazel-devcontainer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock') }}-
+            bazel-devcontainer-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Seed devcontainer cache volume
+        run: |
+          docker volume create ocs2_bazel-cache
+          if [ -f "$RUNNER_TEMP/bazel-cache.tar" ]; then
+            docker run --rm \
+              -v ocs2_bazel-cache:/cache -v "$RUNNER_TEMP":/host \
+              ubuntu:24.04 tar -xf /host/bazel-cache.tar -C /cache
+            rm "$RUNNER_TEMP/bazel-cache.tar"
+          fi
+
+      - name: Build and start devcontainer
+        run: devcontainer up --workspace-folder .
+
+      - name: Build
+        run: devcontainer exec --workspace-folder . bazel build --keep_going //...
+
+      - name: Test
+        run: devcontainer exec --workspace-folder . bazel test --keep_going --test_output=errors //...
+
+      # bazel-testlogs is a symlink into the container's output base, which
+      # doesn't resolve on the host, so dereference it inside the container.
+      - name: Collect test logs
+        if: always()
+        run: |
+          devcontainer exec --workspace-folder . bash -c \
+            'if [ -e bazel-testlogs ]; then mkdir -p ci-testlogs && cp -rL bazel-testlogs/. ci-testlogs/; fi' || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazel-testlogs-devcontainer-arm64
+          path: ci-testlogs/
+          if-no-files-found: ignore
+
+      - name: Export devcontainer cache volume
+        if: always()
+        run: |
+          devcontainer exec --workspace-folder . bazel shutdown || true
+          docker run --rm \
+            -v ocs2_bazel-cache:/cache -v "$RUNNER_TEMP":/host \
+            ubuntu:24.04 tar -cf /host/bazel-cache.tar -C /cache .
+
+      - name: Save Bazel cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/bazel-cache.tar
+          key: bazel-devcontainer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('MODULE.bazel.lock') }}-${{ github.run_id }}
