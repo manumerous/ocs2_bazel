@@ -1,4 +1,4 @@
-# OCS2 Toolbox
+# OCS2 Bazel Toolbox
 An updated version of the Optimal Control for Switched Systems (OCS2) library ported to build with bazel and up to date dependencies including ROS2 and Pinocchio 4.
 
  Furthermore it includes improved interactivity (Gain setting, enabling/disabling costs & constraints) from my prior ROS2 port of OCS2.
