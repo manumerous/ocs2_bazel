@@ -53,6 +53,15 @@ cc_binary(
     deps = _DEPS,
 )
 
+# Browser-form version of double_integrator_target; wired into bringup_double_integrator below.
+cc_binary(
+    name = "double_integrator_target_web",
+    srcs = ["src/DoubleIntegratorTargetPoseCommandWeb.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    linkopts = OCS2_LINKOPTS,
+    deps = _DEPS,
+)
+
 # ---------------------------------------------------------------------------
 # Bringup: replaces double_integrator.launch.py's node set (minus rviz --
 # rviz2 isn't a Bazel target in this workspace; see the MODULE.bazel note on
@@ -60,13 +69,11 @@ cc_binary(
 #
 #   bazel run //ocs2_robotic_examples/ocs2_double_integrator_ros:bringup_double_integrator
 #
-# starts the MPC solver and the dummy simulator together, one terminal, one
-# Ctrl-C stops both. double_integrator_target (the interactive pose
-# commander) is NOT included: it blocks on interactive std::cin
-# (TargetTrajectoriesKeyboardPublisher), and rules_multirun's parallel mode
-# can't give it its own terminal or route keystrokes to just one command --
-# that's exactly what its `gnome-terminal --` window did in the old launch
-# file. Run it on demand, in its own terminal, via:
+# starts the MPC solver, the dummy simulator, and the browser-form pose
+# commander (double_integrator_target_web, http://localhost:8080/) together,
+# one terminal, one Ctrl-C stops all three. The original std::cin commander
+# (double_integrator_target) isn't included -- it needs its own terminal.
+# Run it on demand, in its own terminal, via:
 #
 #   bazel run //ocs2_robotic_examples/ocs2_double_integrator_ros:run_double_integrator_target
 #
@@ -85,11 +92,19 @@ command(
     description = "dummy simulator (double_integrator_dummy_test)",
 )
 
+command(
+    name = "_bringup_double_integrator_target_web",
+    arguments = ["mpc"],
+    command = ":double_integrator_target_web",
+    description = "pose commander form (double_integrator_target_web, http://localhost:8080/)",
+)
+
 multirun(
     name = "bringup_double_integrator",
     commands = [
         ":_bringup_double_integrator_mpc",
         ":_bringup_double_integrator_dummy",
+        ":_bringup_double_integrator_target_web",
     ],
     jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
 )

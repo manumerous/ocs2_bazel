@@ -58,13 +58,15 @@ cc_library(
     srcs = [
         "src/gait/GaitKeyboardPublisher.cpp",
         "src/gait/GaitReceiver.cpp",
+        "src/gait/GaitWebPublisher.cpp",
         "src/visualization/LeggedRobotVisualizer.cpp",
     ],
     hdrs = glob(["include/**/*.h"]),
     copts = OCS2_ROS2_COPTS,
     includes = ["include"],
     linkopts = OCS2_LINKOPTS,
-    deps = _DEPS,
+    # @httplib not added to the shared _DEPS: only GaitWebPublisher.cpp here needs it.
+    deps = _DEPS + ["@httplib"],
 )
 
 # data: makes ament_index_cpp::get_package_share_directory("ocs2_legged_robot")
@@ -130,6 +132,25 @@ cc_binary(
     deps = [":ocs2_legged_robot_ros"] + _DEPS,
 )
 
+# Browser-form versions of the two commanders above; wired into bringup_anymal[_sqp] below.
+cc_binary(
+    name = "legged_robot_target_web",
+    srcs = ["src/LeggedRobotPoseCommandNodeWeb.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_legged_robot:ament_index"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [":ocs2_legged_robot_ros"] + _DEPS,
+)
+
+cc_binary(
+    name = "legged_robot_gait_command_web",
+    srcs = ["src/LeggedRobotGaitCommandNodeWeb.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    data = ["//ocs2_robotic_examples/ocs2_legged_robot:ament_index"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [":ocs2_legged_robot_ros"] + _DEPS,
+)
+
 # ---------------------------------------------------------------------------
 # Bringup: replaces anymal.launch.py's node set (minus rviz -- rviz2 isn't a
 # Bazel target in this workspace; see the MODULE.bazel note on RCR scope).
@@ -139,19 +160,17 @@ cc_binary(
 #   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal
 #   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal_sqp
 #
-# starts the MPC solver and the dummy simulator together, streaming both
-# logs to one terminal; Ctrl-C stops both. The pose and gait commanders are
-# NOT part of this multirun: both block on interactive std::cin
-# (TargetTrajectoriesKeyboardPublisher / GaitKeyboardPublisher), and
-# rules_multirun's parallel mode has no way to give each command its own
-# terminal or route keystrokes to just one of them -- that's exactly what
-# separate `gnome-terminal --` windows did in the old launch file. Run them
-# on demand, each in its own terminal, via:
+# starts the MPC solver, the dummy simulator, and the browser-form pose/gait
+# commanders (legged_robot_target_web on http://localhost:8081/,
+# legged_robot_gait_command_web on http://localhost:8082/) together,
+# streaming all four logs to one terminal; Ctrl-C stops all of them. The
+# original std::cin commanders aren't part of this multirun -- they need
+# their own terminal. Run those on demand, each in its own terminal, via:
 #
 #   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_target
 #   bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:run_anymal_gait_command
 #
-# All four commands default to the same (task_name="mpc", reference_name=
+# All commands default to the same (task_name="mpc", reference_name=
 # "command") pair anymal.launch.py used.
 command(
     name = "_bringup_anymal_mpc",
@@ -173,11 +192,33 @@ command(
     description = "dummy simulator (legged_robot_dummy)",
 )
 
+command(
+    name = "_bringup_anymal_target_web",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_target_web",
+    description = "pose commander form (legged_robot_target_web, http://localhost:8081/)",
+)
+
+command(
+    name = "_bringup_anymal_gait_command_web",
+    arguments = [
+        "mpc",
+        "command",
+    ],
+    command = ":legged_robot_gait_command_web",
+    description = "gait commander form (legged_robot_gait_command_web, http://localhost:8082/)",
+)
+
 multirun(
     name = "bringup_anymal",
     commands = [
         ":_bringup_anymal_mpc",
         ":_bringup_anymal_dummy",
+        ":_bringup_anymal_target_web",
+        ":_bringup_anymal_gait_command_web",
     ],
     jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
 )
@@ -197,6 +238,8 @@ multirun(
     commands = [
         ":_bringup_anymal_sqp_mpc",
         ":_bringup_anymal_dummy",
+        ":_bringup_anymal_target_web",
+        ":_bringup_anymal_gait_command_web",
     ],
     jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
 )
