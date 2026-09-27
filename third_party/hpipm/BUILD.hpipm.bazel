@@ -5,7 +5,9 @@ transcribed from hpipm's own CMakeLists.txt defaults, which
 ocs2_sqp/hpipm_catkin/CMakeLists.txt does not override: TARGET=AVX (hpipm's
 own default -- note this is independent of BLASFEO's own TARGET, which is
 GENERIC; hpipm's TARGET only selects which of its *own* ipm_core aux sources
-to build), REF_BLAS=0, USE_C99_MATH=ON, RUNTIME_CHECKS=ON.
+to build), REF_BLAS=0, USE_C99_MATH=ON, RUNTIME_CHECKS=ON. TARGET=AVX is only
+used on x86_64; other CPUs (e.g. aarch64) fall back to hpipm's TARGET=GENERIC
+branch, since -m64/-mavx and the AVX intrinsics don't exist there.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
@@ -56,13 +58,21 @@ _DENSE_QP_SRC = [
     "dense_qp/s_dense_qcqp_utils.c",
 ]
 
-# TARGET=AVX branch.
+# TARGET=AVX branch on x86_64; TARGET=GENERIC (portable C aux kernels)
+# everywhere else, e.g. aarch64 devcontainers on Apple Silicon hosts.
 _IPM_CORE_SRC = [
-    "ipm_core/d_core_qp_ipm_aux_avx.c",
     "ipm_core/d_core_qp_ipm.c",
-    "ipm_core/s_core_qp_ipm_aux_avx.c",
     "ipm_core/s_core_qp_ipm.c",
-]
+] + select({
+    "@platforms//cpu:x86_64": [
+        "ipm_core/d_core_qp_ipm_aux_avx.c",
+        "ipm_core/s_core_qp_ipm_aux_avx.c",
+    ],
+    "//conditions:default": [
+        "ipm_core/d_core_qp_ipm_aux.c",
+        "ipm_core/s_core_qp_ipm_aux.c",
+    ],
+})
 
 _OCP_QP_SRC = [
     "ocp_qp/d_ocp_qp.c",
@@ -196,14 +206,20 @@ cc_library(
     copts = [
         "-O2",
         "-fPIC",
-        "-m64",
-        "-mavx",
-    ],
+    ] + select({
+        "@platforms//cpu:x86_64": [
+            "-m64",
+            "-mavx",
+        ],
+        "//conditions:default": [],
+    }),
     includes = ["include"],
     local_defines = [
-        "TARGET_AVX",
         "USE_C99_MATH",
         "RUNTIME_CHECKS",
-    ],
+    ] + select({
+        "@platforms//cpu:x86_64": ["TARGET_AVX"],
+        "//conditions:default": ["TARGET_GENERIC"],
+    }),
     deps = ["@blasfeo"],
 )
