@@ -1,0 +1,14 @@
+{
+  "name": "ocs2_bazel (Ubuntu 24.04, matches CI)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  // Named volume so the Bazel/RCR/BCR fetch-and-compile graph survives
+  // container rebuilds instead of re-downloading and recompiling from
+  // scratch every time -- this graph is large enough that this matters.
+  "mounts": [
+    "source=ocs2_bazel-cache,target=/root/.cache/bazel,type=volume"
+  ]
+}
