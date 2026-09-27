@@ -1,0 +1,31 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+# OCS2_ROS2_COPTS (C++17) is reused here for the same reason as
+# ocs2_pinocchio_interface -- pinocchio 4.x (and now its collision layer,
+# which needs @coal) requires C++17 regardless of ROS2.
+cc_library(
+    name = "ocs2_self_collision",
+    srcs = [
+        "src/PinocchioGeometryInterface.cpp",
+        "src/SelfCollision.cpp",
+        "src/SelfCollisionConstraint.cpp",
+        "src/SelfCollisionConstraintCppAd.cpp",
+        "src/SelfCollisionCppAd.cpp",
+    ],
+    hdrs = glob(["include/**/*.h"]),
+    copts = OCS2_ROS2_COPTS + [
+        "-Wno-ignored-attributes",
+    ],
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_core",
+        "//ocs2_pinocchio/ocs2_pinocchio_interface",
+        "//ocs2_robotic_tools",
+        "@coal",
+        "@pinocchio",
+    ],
+)

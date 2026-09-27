@@ -1,0 +1,49 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+# NOTE: test/ (testSelfCollision.cpp, testEndEffectorConstraint.cpp, testDummyMobileManipulator.cpp)
+# isn't wired up as a cc_test here -- they need ocs2::mobile_manipulator::getPath() (this package's
+# own package_path.h, .in-substituted by CMake's configure_file) and ocs2::robotic_assets::getPath(),
+# neither of which has a Bazel-appropriate replacement yet (see third_party/ocs2_robotic_assets's
+# own "phase 5" TODO -- no already-ported example package has cc_test targets for the same reason).
+cc_library(
+    name = "ocs2_mobile_manipulator",
+    srcs = [
+        "src/FactoryFunctions.cpp",
+        "src/MobileManipulatorInterface.cpp",
+        "src/MobileManipulatorPinocchioMapping.cpp",
+        "src/MobileManipulatorPreComputation.cpp",
+        "src/constraint/EndEffectorConstraint.cpp",
+        "src/dynamics/DefaultManipulatorDynamics.cpp",
+        "src/dynamics/FloatingArmManipulatorDynamics.cpp",
+        "src/dynamics/FullyActuatedFloatingArmManipulatorDynamics.cpp",
+        "src/dynamics/WheelBasedMobileManipulatorDynamics.cpp",
+    ],
+    hdrs = glob(["include/**/*.h"]),
+    copts = OCS2_ROS2_COPTS + [
+        "-Wno-ignored-attributes",
+    ],
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_core",
+        "//ocs2_ddp",
+        "//ocs2_mpc",
+        "//ocs2_oc",
+        "//ocs2_pinocchio/ocs2_pinocchio_interface",
+        "//ocs2_pinocchio/ocs2_self_collision",
+        "//ocs2_robotic_tools",
+        "@boost.filesystem",
+        "@boost.system",
+        "@pinocchio",
+        "@urdf//:urdf_library",
+        "@urdfdom//:urdfdom_library",
+    ],
+)
+
+filegroup(
+    name = "config",
+    srcs = glob(["config/**"]),
+)
