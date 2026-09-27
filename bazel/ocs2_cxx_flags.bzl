@@ -7,18 +7,16 @@ link it. Bazel's `copts`/`linkopts` don't propagate to dependents the way
 CMake's PUBLIC compile options do, so this list is applied explicitly on
 every migrated cc_library/cc_binary/cc_test instead.
 
-DEVIATION FROM THE PLAN on the C++ standard: `-std=c++14` (matching
-`set(CMAKE_CXX_STANDARD 14)` in ocs2_cxx_flags.cmake) is applied here, in
-OCS2_COPTS, to OCS2's own cc_library/cc_binary targets -- deliberately NOT
-as a repo-wide `--cxxopt` in .bazelrc. A repo-wide C++14 default would also
-force every external dependency down to C++14, and the RCR/BCR-resolved
-graph only offers googletest >=1.17.0.bcr.2, which hard `#error`s below
-C++17 ("C++ versions less than C++17 are not supported."). cc_test targets
-that pull in gtest use OCS2_TEST_COPTS instead, which asks for C++17
-explicitly. Mixing C++14-compiled production code with a C++17-compiled
-test binary that links it is safe on the GCC/libstdc++ toolchain this was
-verified against (no ABI-relevant differences for the types this
-codebase's headers expose across that boundary between the two standards).
+DEVIATION FROM THE PLAN on the C++ standard: `set(CMAKE_CXX_STANDARD 14)`
+in ocs2_cxx_flags.cmake is intentionally NOT mirrored here. OCS2_COPTS
+instead applies `-std=c++23` to OCS2's own cc_library/cc_binary targets,
+deliberately NOT as a repo-wide `--cxxopt` in .bazelrc -- a repo-wide
+setting would also force every external dependency onto the same
+standard, which isn't desirable for third-party code resolved from the
+RCR/BCR graph. OCS2_TEST_COPTS and OCS2_ROS2_COPTS are kept as separate
+names (rather than folding everything into OCS2_COPTS) purely so
+cc_test/ROS2-bridge targets can still be pinned independently in the
+future; today all three resolve to the same `-std=c++23`.
 """
 
 # "-Wl,--no-as-needed" is a linker flag, not a compiler flag; kept out of
@@ -27,21 +25,16 @@ OCS2_COPTS = [
     "-pthread",
     "-Wfatal-errors",
     "-fopenmp",
-    "-std=c++14",
+    "-std=c++23",
 ]
 
-OCS2_TEST_COPTS = OCS2_COPTS[:-1] + ["-std=c++17"]
+OCS2_TEST_COPTS = OCS2_COPTS[:-1] + ["-std=c++23"]
 
-# Same C++17 override, for the same reason, but for *production* code
-# rather than tests: packages that bridge into ROS2 itself
-# (ocs2_ros2_interfaces and the *_ros example binaries) transitively
-# include rclcpp/rosidl runtime headers (e.g. rosidl_buffer/buffer.hpp)
-# that use `std::is_same_v` and other C++17-only standard library
-# features -- compiling them at C++14 fails with real
-# "'is_same_v' is not a member of 'std'" errors. The solver/math core
-# (ocs2_core and everything under it) has no such dependency and stays on
-# C++14 via plain OCS2_COPTS; only the ROS2 integration layer needs this.
-OCS2_ROS2_COPTS = OCS2_COPTS[:-1] + ["-std=c++17"]
+# Kept as its own name (rather than reusing OCS2_COPTS directly) for
+# packages that bridge into ROS2 itself (ocs2_ros2_interfaces and the
+# *_ros example binaries), in case the ROS2 integration layer ever needs
+# a standard override independent of the solver/math core again.
+OCS2_ROS2_COPTS = OCS2_COPTS[:-1] + ["-std=c++23"]
 
 OCS2_LINKOPTS = [
     "-pthread",
