@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_centroidal_model/PinocchioCentroidalDynamics.h"
 
+#include <cassert>
 #include <ocs2_robotic_tools/common/SkewSymmetricMatrix.h>
 
 #include "ocs2_centroidal_model/AccessHelperFunctions.h"

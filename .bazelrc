@@ -8,6 +8,17 @@ common --registry=https://bcr.bazel.build
 # Test hermeticity, per RCR's own guidance for ROS2 interface/codegen tests.
 test --sandbox_default_allow_network=false
 
+# Default to optimized builds (-O2, -DNDEBUG). The default "fastbuild" mode
+# left Eigen's bounds-checking assertions on for every operation, which is
+# brutal for the DDP/SQP solver loop's dense linear algebra -- MPC was
+# visibly slow under it. (The CppAD-generated dynamics/constraint/kinematics
+# libraries were never affected by this: CppAdInterface compiles those at
+# runtime with its own hardcoded "-O3 -march=native -mtune=native
+# -ffast-math", independent of Bazel's compilation_mode.) Override with
+# `-c fastbuild` on the command line for a quicker edit/rebuild cycle while
+# developing.
+build --compilation_mode=opt
+
 # Disable Bazel's automatic intermediate .so generation for cc_library deps
 # shared by multiple binaries/tests ("dynamic_mode=default"). With it on,
 # Bazel builds e.g. ocs2_core as its own standalone .so, which must resolve

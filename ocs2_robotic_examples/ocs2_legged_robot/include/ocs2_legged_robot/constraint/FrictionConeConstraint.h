@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <cassert>
 #include <ocs2_centroidal_model/CentroidalModelInfo.h>
 #include <ocs2_core/constraint/StateInputConstraint.h>
 

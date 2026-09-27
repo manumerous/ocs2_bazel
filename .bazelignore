@@ -1,0 +1,6 @@
+# Claude Code session state (worktrees, scratch files). A worktree under
+# here can carry its own bazel-<name> convenience symlink into a *different*
+# Bazel invocation's output tree; without this, `bazel build ...`/`//...`
+# recurses into it as if it were part of this repo and fails to load it
+# (its external/ repos aren't visible from this repo's own module graph).
+.claude/

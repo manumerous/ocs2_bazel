@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_oc/oc_problem/OcpToKkt.h"
 
+#include <cassert>
 #include <numeric>
 
 namespace ocs2 {

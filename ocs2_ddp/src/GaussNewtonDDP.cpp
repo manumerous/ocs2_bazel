@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_ddp/GaussNewtonDDP.h"
 
+#include <cassert>
 #include <algorithm>
 #include <numeric>
 
