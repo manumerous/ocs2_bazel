@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_oc/oc_data/TimeDiscretization.h"
 
+#include <cassert>
 #include <ocs2_core/misc/Lookup.h>
 
 namespace ocs2 {

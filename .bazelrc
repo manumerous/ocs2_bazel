@@ -1,30 +1,17 @@
-# Bazel registries: Bazel Central Registry for generic C++ deps, and the
-# ROS Central Registry (RCR) for ROS2 "Lyrical Luth" packages.
-# The RCR registry is listed first so its modules take precedence when a
-# name exists in both (e.g. RCR's newer `pinocchio` vs BCR's stale one).
+# RCR listed first so it takes precedence over BCR for shared module names (e.g. pinocchio).
 common --registry=https://openrobotics.github.io/ros-central-registry
 common --registry=https://bcr.bazel.build
 
 # Test hermeticity, per RCR's own guidance for ROS2 interface/codegen tests.
 test --sandbox_default_allow_network=false
 
-# Disable Bazel's automatic intermediate .so generation for cc_library deps
-# shared by multiple binaries/tests ("dynamic_mode=default"). With it on,
-# Bazel builds e.g. ocs2_core as its own standalone .so, which must resolve
-# all of its symbols (including Boost.Log's) at *that* .so's link time --
-# and that broke with real "undefined reference to boost::log::..." errors
-# once the dependency graph got deep enough (ocs2_core -> boost.log).
-# Fully static internal linking matches what the original CMake build
-# actually produced anyway.
+# Default to optimized builds; use -c fastbuild for a quicker edit/rebuild cycle.
+build --compilation_mode=opt
+
+# Static linking; dynamic_mode=default breaks boost.log symbol resolution at .so boundaries.
 build --dynamic_mode=off
 
-# @rosdistro's own `rmw` build setting defaults to "dynamic", which pulls
-# in *every* RMW middleware backend rclcpp can be built against --
-# including rmw_zenoh_cpp, which drags in a Rust toolchain (via zenoh-c's
-# Cargo build script) just to compile a plain C++ node. OCS2 doesn't need
-# runtime RMW switching; pin to the same default a plain ROS2 install
-# uses (rmw_fastrtps_cpp) instead of standing up a whole second
-# language's toolchain for a backend nothing here uses.
+# Avoid pulling in every RMW backend (rmw_zenoh_cpp needs a Rust toolchain); pin the default one.
 build --@rosdistro//:rmw=rmw_fastrtps_cpp
 
 # The existing CMake build pins C++14 (see ocs2_core/cmake/ocs2_cxx_flags.cmake),

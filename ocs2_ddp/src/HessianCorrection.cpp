@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_ddp/HessianCorrection.h"
 
+#include <cassert>
 #include <unordered_map>
 
 namespace ocs2 {

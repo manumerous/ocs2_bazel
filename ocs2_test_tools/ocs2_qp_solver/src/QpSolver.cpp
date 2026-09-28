@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_qp_solver/QpSolver.h"
 
+#include <cassert>
 #include <Eigen/LU>
 #include <numeric>
 #include <tuple>

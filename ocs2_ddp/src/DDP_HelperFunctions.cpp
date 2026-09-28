@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_ddp/DDP_HelperFunctions.h"
 
+#include <cassert>
 #include <algorithm>
 #include <iostream>
 

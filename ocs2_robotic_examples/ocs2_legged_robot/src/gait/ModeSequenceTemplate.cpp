@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ocs2_legged_robot/gait/ModeSequenceTemplate.h"
 
+#include <cassert>
 #include <ocs2_core/misc/Display.h>
 #include <ocs2_core/misc/LoadData.h>
 

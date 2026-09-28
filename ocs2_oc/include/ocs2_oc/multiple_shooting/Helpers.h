@@ -29,6 +29,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <cassert>
 #include <ocs2_core/Types.h>
 
 #include "ocs2_oc/oc_data/PerformanceIndex.h"
