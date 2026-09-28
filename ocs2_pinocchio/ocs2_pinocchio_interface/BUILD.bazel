@@ -8,11 +8,12 @@ package(default_visibility = ["//visibility:public"])
 # test/testPinocchioEndEffectorKinematics.cpp) is entirely commented out --
 # no active target to mirror here.
 #
-# OCS2_ROS2_COPTS (C++17) is reused here even though this package has
-# nothing to do with ROS2 -- pinocchio 4.x itself requires C++17
+# OCS2_ROS2_COPTS is reused here even though this package has nothing to
+# do with ROS2 -- pinocchio 4.x itself requires at least C++17
 # (`set(CMAKE_CXX_STANDARD 17)` in this package's own original
-# CMakeLists.txt too), for the same "solver core stays C++14, anything
-# that must touch a C++17-only dependency doesn't" reasoning.
+# CMakeLists.txt too), and OCS2_ROS2_COPTS is the C++23-pinned copts list
+# available for packages that need a standard newer than the solver core's
+# own OCS2_COPTS.
 cc_library(
     name = "ocs2_pinocchio_interface",
     srcs = [

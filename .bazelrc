@@ -27,16 +27,12 @@ build --dynamic_mode=off
 # language's toolchain for a backend nothing here uses.
 build --@rosdistro//:rmw=rmw_fastrtps_cpp
 
-# The existing CMake build pins C++14 (see ocs2_core/cmake/ocs2_cxx_flags.cmake).
-# Preserve that for OCS2's own targets -- but deliberately NOT as a global
-# --cxxopt here, since that would also force every external dependency
-# (including googletest, which the RCR/BCR-resolved graph only offers as
-# >=1.17.0.bcr.2 and which hard #errors below C++17: "C++ versions less
-# than C++17 are not supported.") down to C++14 too. Instead, "-std=c++14"
-# is added directly to OCS2_COPTS (bazel/ocs2_cxx_flags.bzl) on OCS2's own
-# cc_library/cc_binary targets only, and "-std=c++17" to OCS2_TEST_COPTS
-# for cc_test targets that pull in gtest. Everything else (external deps)
-# is left on the toolchain's own ambient default, which happens to already
-# be gnu++17 on the GCC 13 this was verified against -- if building on a
-# GCC/Clang whose *default* is older than C++17, googletest would need an
-# explicit --cxxopt=-std=c++17 added back here.
+# The existing CMake build pins C++14 (see ocs2_core/cmake/ocs2_cxx_flags.cmake),
+# but OCS2's own Bazel targets are instead built at C++23 -- deliberately NOT
+# as a global --cxxopt here, since that would also force every external
+# dependency onto C++23. Instead, "-std=c++23" is added directly to
+# OCS2_COPTS/OCS2_TEST_COPTS/OCS2_ROS2_COPTS (bazel/ocs2_cxx_flags.bzl) on
+# OCS2's own cc_library/cc_binary/cc_test targets only. Everything else
+# (external deps, including googletest) is left on the toolchain's own
+# ambient default, which happens to already be gnu++17 on the GCC 13 this
+# was verified against.
