@@ -14,4 +14,12 @@ build --dynamic_mode=off
 # Avoid pulling in every RMW backend (rmw_zenoh_cpp needs a Rust toolchain); pin the default one.
 build --@rosdistro//:rmw=rmw_fastrtps_cpp
 
-# OCS2's own targets stay on C++14 (bazel/ocs2_cxx_flags.bzl); external deps use the toolchain default.
+# The existing CMake build pins C++14 (see ocs2_core/cmake/ocs2_cxx_flags.cmake),
+# but OCS2's own Bazel targets are instead built at C++23 -- deliberately NOT
+# as a global --cxxopt here, since that would also force every external
+# dependency onto C++23. Instead, "-std=c++23" is added directly to
+# OCS2_COPTS/OCS2_TEST_COPTS/OCS2_ROS2_COPTS (bazel/ocs2_cxx_flags.bzl) on
+# OCS2's own cc_library/cc_binary/cc_test targets only. Everything else
+# (external deps, including googletest) is left on the toolchain's own
+# ambient default, which happens to already be gnu++17 on the GCC 13 this
+# was verified against.
