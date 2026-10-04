@@ -1,4 +1,4 @@
-"""BUILD overlay for @pinocchio (http_archive, real upstream v4.0.0).
+"""BUILD overlay for @pinocchio (http_archive, real upstream v4.1.0).
 
 Pinocchio has no Bazel/registry module of its own (RCR's `pinocchio`
 module registers only ament-package bookkeeping; see MODULE.bazel for the
@@ -13,16 +13,24 @@ whatever those headers themselves pull in transitively:
   - the URDF parser (`pinocchio::urdf::buildModel`), which does need
     compiled .cpp sources
 
-Deliberately NOT built (per the plan approved for this scope expansion):
-CasADi headers, the collision/broadphase layer (needs coal/hpp-fcl, which
-we don't have and don't need -- OCS2 never calls `buildGeom`), the MJCF/
-SDF/graph parsers, Python bindings, the `extra/` and `visualizers/`
-modules, the OpenMP-parallelized batch algorithms, and the deprecated
-header aliases. `ENABLE_TEMPLATE_INSTANTIATION` (a pure compile-time
-optimization upstream, default ON) is left off entirely: OCS2 needs the
-CppAD-scalar-templated code path anyway, not just the precompiled
-`double` instantiations that option would provide, so this is a pure
-header-only-plus-urdf-parser build.
+Deliberately NOT built: CasADi headers, the MJCF/SDF/graph parsers, Python
+bindings, the `extra/` and `visualizers/` modules, the OpenMP-parallelized
+batch algorithms (`collision/parallel/**`, `algorithm/parallel/**`), and the
+deprecated header aliases (`deprecated/**` -- ocs2_self_collision's sources
+use the current, non-deprecated `pinocchio/geometry.hpp` API, not the old
+`pinocchio/multibody/{fcl,geometry}.hpp` locations). `ENABLE_TEMPLATE_INSTANTIATION`
+(a pure compile-time optimization upstream, default ON) is left off
+entirely: OCS2 needs the CppAD-scalar-templated code path anyway, not just
+the precompiled `double` instantiations that option would provide.
+
+The collision/broadphase layer (`collision/**`, `src/collision/**`) IS now
+built -- needed by ocs2_self_collision (PinocchioGeometryInterface's
+`buildGeom`/`GeometryModel`) once the self-collision packages were ported.
+This requires `@coal` (see MODULE.bazel) and the `PINOCCHIO_WITH_COLLISION`
+define (checked directly by e.g. src/parsers/urdf/geometry.cpp,
+src/geometry/coal.hxx -- not one of the ament/generated config.hpp macros,
+so it's a plain `defines` entry here, same treatment as the boost.mpl/
+boost.fusion arity defines below).
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
@@ -32,6 +40,9 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "pinocchio",
     srcs = [
+        "src/algorithm/geometry.cpp",
+        "src/collision/collision.cpp",
+        "src/parsers/urdf/geometry.cpp",
         "src/parsers/urdf/model.cpp",
         "src/parsers/urdf/utils.cpp",
         "src/parsers/utils/file-explorer.cpp",
@@ -47,11 +58,11 @@ cc_library(
             # CasADi autodiff backend -- not used by OCS2 (CppAD/CppADCodeGen only).
             "include/pinocchio/autodiff/casadi*.hpp",
             "include/pinocchio/src/autodiff/casadi/**",
-            # Collision / broadphase layer -- needs coal/hpp-fcl, which OCS2
-            # never uses (only pinocchio::urdf::buildModel, never buildGeom).
-            "include/pinocchio/collision/**",
-            "include/pinocchio/src/collision/**",
-            # OpenMP-parallelized batch algorithm variants -- unused by OCS2.
+            # OpenMP-parallelized broadphase/batch algorithm variants -- unused
+            # by OCS2 (ocs2_self_collision only calls the single-threaded
+            # collision API).
+            "include/pinocchio/collision/parallel/**",
+            "include/pinocchio/src/collision/parallel/**",
             "include/pinocchio/algorithm/parallel/**",
             "include/pinocchio/src/algorithm/parallel/**",
             # MJCF/SDF/graph-model/Python parsers -- OCS2 only uses URDF.
@@ -88,6 +99,7 @@ cc_library(
         "PINOCCHIO_WITH_URDFDOM",
         "PINOCCHIO_WITH_CPPAD_SUPPORT",
         "PINOCCHIO_WITH_CPPADCG_SUPPORT",
+        "PINOCCHIO_WITH_COLLISION",
         # pinocchio's JointCollectionDefaultTpl is a boost::variant of 25
         # joint model types -- boost.mpl's *preprocessed* list headers
         # (what boost::variant's implementation uses internally) only go
@@ -134,6 +146,7 @@ cc_library(
         "@boost.serialization",
         "@boost.type_traits",
         "@boost.variant",
+        "@coal",
         "@cppad",
         "@cppadcodegen",
         "@eigen",

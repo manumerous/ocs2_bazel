@@ -1,0 +1,160 @@
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library")
+load("@rules_multirun//:defs.bzl", "command", "multirun")
+load("//bazel:ocs2_cxx_flags.bzl", "OCS2_LINKOPTS", "OCS2_ROS2_COPTS")
+
+package(default_visibility = ["//visibility:public"])
+
+# Every node takes two positional args instead of the old ROS1 /taskFile,
+# /urdfFile and /libFolder global params:
+#   <task file relative to ocs2_mobile_manipulator/config/>
+#   <urdf file relative to ocs2_robotic_assets/resources/mobile_manipulator/>
+# e.g. `franka/task.info franka/urdf/panda.urdf`. The CppAD codegen folder is
+# derived from the task file under /tmp/ocs2/mobile_manipulator/.
+_COPTS = OCS2_ROS2_COPTS + [
+    "-Wno-ignored-attributes",
+]
+
+_DEPS = [
+    "//ocs2_core",
+    "//ocs2_ddp",
+    "//ocs2_mpc",
+    "//ocs2_pinocchio/ocs2_pinocchio_interface",
+    "//ocs2_pinocchio/ocs2_self_collision",
+    "//ocs2_pinocchio/ocs2_self_collision_visualization",
+    "//ocs2_robotic_examples/ocs2_mobile_manipulator",
+    "//ocs2_robotic_tools",
+    "//ocs2_ros2_interfaces",
+    "@ament_index_cpp//:ament_index_cpp_library",
+    "@coal",
+    "@geometry_msgs//:cc",
+    "@pinocchio",
+    "@rclcpp//:rclcpp_library",
+    "@sensor_msgs//:cc",
+    "@std_msgs//:cc",
+    "@tf2_ros//:tf2_ros_library",
+    "@visualization_msgs//:cc",
+]
+
+# data: makes ament_index_cpp::get_package_share_directory("ocs2_mobile_manipulator")
+# (config/<robot>/*.info) and ("ocs2_robotic_assets") (resources/mobile_manipulator/
+# <robot>/urdf/*.urdf) resolve at runtime -- see the ament_index targets in
+# ocs2_mobile_manipulator/BUILD.bazel and third_party/ocs2_robotic_assets.
+_DATA = [
+    "//ocs2_robotic_examples/ocs2_mobile_manipulator:ament_index",
+    "@ocs2_robotic_assets//:ament_index",
+]
+
+# NOTE: ROS1 linked robot_state_publisher::RobotStatePublisher in-process to
+# turn the dummy's joint angles into link TFs. In ROS2 that class is an
+# rclcpp::Node (publishTransforms is protected) and RCR's
+# @robot_state_publisher module exports no cc target, so the dummy now
+# publishes /joint_states (plus the world->base and world->command TFs) and
+# leaves link TFs to an external robot_state_publisher -- same approach as
+# ocs2_legged_robot_ros.
+cc_library(
+    name = "ocs2_mobile_manipulator_ros",
+    srcs = ["src/MobileManipulatorDummyVisualization.cpp"],
+    hdrs = glob(["include/**/*.h"]),
+    copts = _COPTS,
+    includes = ["include"],
+    linkopts = OCS2_LINKOPTS,
+    deps = _DEPS,
+)
+
+cc_binary(
+    name = "mobile_manipulator_mpc",
+    srcs = ["src/MobileManipulatorMpcNode.cpp"],
+    copts = _COPTS,
+    data = _DATA,
+    linkopts = OCS2_LINKOPTS,
+    deps = _DEPS,
+)
+
+cc_binary(
+    name = "mobile_manipulator_dummy_mrt",
+    srcs = ["src/MobileManipulatorDummyMRT.cpp"],
+    copts = _COPTS,
+    data = _DATA,
+    linkopts = OCS2_LINKOPTS,
+    deps = [":ocs2_mobile_manipulator_ros"] + _DEPS,
+)
+
+cc_binary(
+    name = "mobile_manipulator_target",
+    srcs = ["src/MobileManipulatorTarget.cpp"],
+    copts = _COPTS,
+    linkopts = OCS2_LINKOPTS,
+    deps = _DEPS,
+)
+
+# Needs something publishing /joint_states to do anything; in ROS1 that was
+# joint_state_publisher_gui (mobile_manipulator_distance.launch), which isn't
+# a Bazel target here. Its callback also hardcodes a 3-DoF base + 6-DoF arm
+# layout (i.e. kinova j2n6), unchanged from upstream.
+cc_binary(
+    name = "mobile_manipulator_distance_visualization",
+    srcs = ["src/MobileManipulatorDistanceVisualization.cpp"],
+    copts = _COPTS,
+    data = _DATA,
+    linkopts = OCS2_LINKOPTS,
+    deps = _DEPS,
+)
+
+# ---------------------------------------------------------------------------
+# Bringup: replaces launch/manipulator_<robot>.launch's node set (minus rviz
+# and robot_state_publisher -- neither is a Bazel target in this workspace;
+# see the MODULE.bazel note on RCR scope).
+#
+#   bazel run //ocs2_robotic_examples/ocs2_mobile_manipulator_ros:bringup_franka
+#
+# starts the MPC solver, the dummy simulator and the interactive-marker target
+# node together, streaming all logs to one terminal; Ctrl-C stops all three.
+# Unlike ocs2_legged_robot_ros's keyboard commanders, the target node doesn't
+# read std::cin, so it can run inside the multirun.
+_ROBOTS = {
+    "franka": ("franka/task.info", "franka/urdf/panda.urdf"),
+    "kinova_j2n6": ("kinova/task_j2n6.info", "kinova/urdf/j2n6s300.urdf"),
+    "kinova_j2n7": ("kinova/task_j2n7.info", "kinova/urdf/j2n7s300.urdf"),
+    "mabi_mobile": ("mabi_mobile/task.info", "mabi_mobile/urdf/mabi_mobile.urdf"),
+    "pr2": ("pr2/task.info", "pr2/urdf/pr2.urdf"),
+    "ridgeback_ur5": ("ridgeback_ur5/task.info", "ridgeback_ur5/urdf/ridgeback_ur5.urdf"),
+}
+
+[
+    command(
+        name = "_bringup_{}_mpc".format(robot),
+        arguments = list(files),
+        command = ":mobile_manipulator_mpc",
+        description = "mpc solver (mobile_manipulator_mpc, {})".format(robot),
+    )
+    for robot, files in _ROBOTS.items()
+]
+
+[
+    command(
+        name = "_bringup_{}_dummy".format(robot),
+        arguments = list(files),
+        command = ":mobile_manipulator_dummy_mrt",
+        description = "dummy simulator (mobile_manipulator_dummy_mrt, {})".format(robot),
+    )
+    for robot, files in _ROBOTS.items()
+]
+
+command(
+    name = "_bringup_target",
+    command = ":mobile_manipulator_target",
+    description = "interactive marker target (mobile_manipulator_target)",
+)
+
+[
+    multirun(
+        name = "bringup_{}".format(robot),
+        commands = [
+            ":_bringup_{}_mpc".format(robot),
+            ":_bringup_{}_dummy".format(robot),
+            ":_bringup_target",
+        ],
+        jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
+    )
+    for robot in _ROBOTS
+]
