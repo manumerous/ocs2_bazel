@@ -68,7 +68,8 @@ int main(int argc, char** argv) {
 
   // Dummy ballbot
   ocs2::MRT_ROS_Dummy_Loop dummyBallbot(mrt, ballbotInterface.mpcSettings().mrtDesiredFrequency_,
-                                        ballbotInterface.mpcSettings().mpcDesiredFrequency_);
+                                        ballbotInterface.mpcSettings().mpcDesiredFrequency_,
+                                        ballbotInterface.mpcSettings().debugPrint_);
   dummyBallbot.subscribeObservers({ballbotDummyVisualization});
 
   // initial state

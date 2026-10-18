@@ -36,8 +36,8 @@ static auto LOGGER = rclcpp::get_logger("MRT_ROS_Dummy_Loop");
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
-MRT_ROS_Dummy_Loop::MRT_ROS_Dummy_Loop(MRT_ROS_Interface& mrt, scalar_t mrtDesiredFrequency, scalar_t mpcDesiredFrequency)
-    : mrt_(mrt), mrtDesiredFrequency_(mrtDesiredFrequency), mpcDesiredFrequency_(mpcDesiredFrequency) {
+MRT_ROS_Dummy_Loop::MRT_ROS_Dummy_Loop(MRT_ROS_Interface& mrt, scalar_t mrtDesiredFrequency, scalar_t mpcDesiredFrequency, bool debugPrint)
+    : mrt_(mrt), mrtDesiredFrequency_(mrtDesiredFrequency), mpcDesiredFrequency_(mpcDesiredFrequency), debugPrint_(debugPrint) {
   if (mrtDesiredFrequency_ < 0) {
     throw std::runtime_error("MRT loop frequency should be a positive number.");
   }
@@ -95,7 +95,9 @@ void MRT_ROS_Dummy_Loop::synchronizedDummyLoop(const SystemObservation& initObse
 
   rclcpp::Rate simRate(mrtDesiredFrequency_);
   while (rclcpp::ok()) {
-    std::cout << "### Current time " << currentObservation.time << "\n";
+    if (debugPrint_) {
+      std::cout << "### Current time " << currentObservation.time << "\n";
+    }
 
     // Trigger MRT callbacks
     mrt_.spinMRT();
@@ -106,7 +108,9 @@ void MRT_ROS_Dummy_Loop::synchronizedDummyLoop(const SystemObservation& initObse
       while (!policyUpdatedForTime(currentObservation.time) && rclcpp::ok()) {
         mrt_.spinMRT();
       }
-      std::cout << "<<< New MPC policy starting at " << mrt_.getPolicy().timeTrajectory_.front() << "\n";
+      if (debugPrint_) {
+        std::cout << "<<< New MPC policy starting at " << mrt_.getPolicy().timeTrajectory_.front() << "\n";
+      }
     }
 
     // Forward simulation
@@ -118,7 +122,9 @@ void MRT_ROS_Dummy_Loop::synchronizedDummyLoop(const SystemObservation& initObse
     // Publish observation if at the next step we want a new policy
     if ((loopCounter + 1) % mpcUpdateRatio == 0) {
       mrt_.setCurrentObservation(currentObservation);
-      std::cout << ">>> Observation is published at " << currentObservation.time << "\n";
+      if (debugPrint_) {
+        std::cout << ">>> Observation is published at " << currentObservation.time << "\n";
+      }
     }
 
     // Update observers
@@ -140,14 +146,18 @@ void MRT_ROS_Dummy_Loop::realtimeDummyLoop(const SystemObservation& initObservat
 
   rclcpp::Rate simRate(mrtDesiredFrequency_);
   while (rclcpp::ok()) {
-    std::cout << "### Current time " << currentObservation.time << "\n";
+    if (debugPrint_) {
+      std::cout << "### Current time " << currentObservation.time << "\n";
+    }
 
     // Trigger MRT callbacks
     mrt_.spinMRT();
 
     // Update the policy if a new on was received
     if (mrt_.updatePolicy()) {
-      std::cout << "<<< New MPC policy starting at " << mrt_.getPolicy().timeTrajectory_.front() << "\n";
+      if (debugPrint_) {
+        std::cout << "<<< New MPC policy starting at " << mrt_.getPolicy().timeTrajectory_.front() << "\n";
+      }
     }
 
     // Forward simulation

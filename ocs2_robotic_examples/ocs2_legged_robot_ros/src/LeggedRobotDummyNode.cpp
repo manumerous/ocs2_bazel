@@ -79,7 +79,8 @@ int main(int argc, char** argv) {
 
   // Dummy legged robot
   MRT_ROS_Dummy_Loop leggedRobotDummySimulator(mrt, interface.mpcSettings().mrtDesiredFrequency_,
-                                               interface.mpcSettings().mpcDesiredFrequency_);
+                                               interface.mpcSettings().mpcDesiredFrequency_,
+                                               interface.mpcSettings().debugPrint_);
   leggedRobotDummySimulator.subscribeObservers({leggedRobotVisualizer});
 
   // Initial state

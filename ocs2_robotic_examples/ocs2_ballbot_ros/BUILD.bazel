@@ -105,6 +105,19 @@ cc_binary(
     ],
 )
 
+# Browser-form version of ballbot_target; wired into bringup_ballbot_ddp/slp/sqp below.
+cc_binary(
+    name = "ballbot_target_web",
+    srcs = ["src/BallbotTargetPoseCommandWeb.cpp"],
+    copts = OCS2_ROS2_COPTS,
+    linkopts = OCS2_LINKOPTS,
+    deps = [
+        "//ocs2_robotic_examples/ocs2_ballbot",
+        "//ocs2_ros2_interfaces",
+        "@rclcpp//:rclcpp_library",
+    ],
+)
+
 # Matches the original CMakeLists.txt exactly: ballbot_dummy_test and
 # ballbot_mpc_mrt each compile BallbotDummyVisualization.cpp directly
 # into the binary (`add_executable(ballbot_dummy_test
@@ -148,13 +161,11 @@ cc_binary(
 #   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_slp
 #   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:bringup_ballbot_sqp
 #
-# each starts its MPC solver together with the dummy simulator, one terminal,
-# one Ctrl-C stops both. ballbot_target (the interactive pose commander) is
-# NOT included: it blocks on interactive std::cin
-# (TargetTrajectoriesKeyboardPublisher), and rules_multirun's parallel mode
-# can't give it its own terminal or route keystrokes to just one command --
-# that's exactly what its `gnome-terminal --` window did in the old launch
-# file. Run it on demand, in its own terminal, via:
+# each starts its MPC solver, the dummy simulator, and the browser-form pose
+# commander (ballbot_target_web, http://localhost:8080/) together, one
+# terminal, one Ctrl-C stops all three. The original std::cin commander
+# (ballbot_target) isn't included -- it needs its own terminal. Run it on
+# demand, in its own terminal, via:
 #
 #   bazel run //ocs2_robotic_examples/ocs2_ballbot_ros:run_ballbot_target
 #
@@ -173,11 +184,19 @@ command(
     description = "dummy simulator (ballbot_dummy_test)",
 )
 
+command(
+    name = "_bringup_ballbot_target_web",
+    arguments = ["mpc"],
+    command = ":ballbot_target_web",
+    description = "pose commander form (ballbot_target_web, http://localhost:8080/)",
+)
+
 multirun(
     name = "bringup_ballbot_ddp",
     commands = [
         ":_bringup_ballbot_ddp_mpc",
         ":_bringup_ballbot_ddp_dummy",
+        ":_bringup_ballbot_target_web",
     ],
     jobs = 0,  # 0 == run in parallel, like separate launch-file terminals
 )
@@ -201,6 +220,7 @@ multirun(
     commands = [
         ":_bringup_ballbot_slp_mpc",
         ":_bringup_ballbot_slp_dummy",
+        ":_bringup_ballbot_target_web",
     ],
     jobs = 0,
 )
@@ -224,6 +244,7 @@ multirun(
     commands = [
         ":_bringup_ballbot_sqp_mpc",
         ":_bringup_ballbot_sqp_dummy",
+        ":_bringup_ballbot_target_web",
     ],
     jobs = 0,
 )
