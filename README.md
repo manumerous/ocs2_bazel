@@ -33,3 +33,11 @@ bazel test //...
 See [ocs2_robotic_examples/README.md](ocs2_robotic_examples/README.md) for
 how to run the robot examples (double integrator, ballbot, legged robot).
 
+
+## Using ocs2_ros2 as a dependency
+
+Get pinocchio, cppad etc. through the extension in
+[bazel/extensions.bzl](bazel/extensions.bzl) rather than your own copies.
+Bazel ignores a dependency's `.bazelrc` and root-only module settings, so copy
+the registries and `--@rosdistro//:rmw` from our `.bazelrc`, and the
+`rosdistro` dep and `python.toolchain` from our `MODULE.bazel`.
