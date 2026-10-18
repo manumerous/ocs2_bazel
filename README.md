@@ -33,3 +33,77 @@ bazel test //...
 See [ocs2_robotic_examples/README.md](ocs2_robotic_examples/README.md) for
 how to run the robot examples (double integrator, ballbot, legged robot).
 
+
+## Using ocs2_ros2 as a dependency
+
+Another Bazel module can depend on this one (module name `ocs2_ros2`). Pick
+one of these in your `MODULE.bazel`:
+
+```starlark
+bazel_dep(name = "ocs2_ros2", version = "0.1.0")
+
+# Either a pinned commit ...
+git_override(
+    module_name = "ocs2_ros2",
+    remote = "https://github.com/manumerous/ocs2_bazel.git",
+    commit = "<commit sha>",
+)
+
+# ... or a local checkout.
+local_path_override(
+    module_name = "ocs2_ros2",
+    path = "/path/to/ocs2_bazel",
+)
+```
+
+Pinocchio, CppAD, CppADCodeGen, BLASFEO, HPIPM, orocos_kdl, kdl_parser and
+ocs2_robotic_assets have no registry module, so this repo fetches them
+through the `ocs2_deps` module extension. If your own code includes their
+headers, import the same repos instead of declaring your own copies (a
+second pinocchio or CppAD in one binary leads to ODR and duplicate-symbol
+problems):
+
+```starlark
+ocs2_deps = use_extension("@ocs2_ros2//bazel:extensions.bzl", "ocs2_deps")
+use_repo(ocs2_deps, "pinocchio", "cppad")
+```
+
+Then depend on `@pinocchio`, `@cppad`, etc. as usual.
+
+Some settings only take effect in the *root* module, so your project has to
+set them itself:
+
+- `.bazelrc`:
+
+  ```
+  common --registry=https://openrobotics.github.io/ros-central-registry
+  common --registry=https://bcr.bazel.build
+  build --@rosdistro//:rmw=rmw_fastrtps_cpp
+  build --dynamic_mode=off
+  ```
+
+  The ROS Central Registry provides the ROS2 modules. List it before the BCR,
+  as this repo does, so it wins when a module exists in both. Without the
+  `rmw` setting, rclcpp pulls in every RMW backend, including rmw_zenoh_cpp,
+  and the build fails because no Rust toolchain is found. `--dynamic_mode=off`
+  is optional: it matches how this repo links its own tests (fully static),
+  but tests also pass without it.
+
+- `MODULE.bazel`:
+
+  ```starlark
+  bazel_dep(name = "rosdistro", version = "lyrical.2026-06-08.rcr.1")
+  bazel_dep(name = "rules_python", version = "2.2.0")
+
+  python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+  python.toolchain(
+      is_default = True,
+      python_version = "3.12",
+  )
+  ```
+
+  `rosdistro` must be a direct dependency so `.bazelrc` can refer to
+  `@rosdistro//:rmw`. The default Python toolchain is chosen by the root
+  module only; without the one above, rosidl code generation fails with
+  "No matching wheel for current configuration's Python version and
+  platform".
