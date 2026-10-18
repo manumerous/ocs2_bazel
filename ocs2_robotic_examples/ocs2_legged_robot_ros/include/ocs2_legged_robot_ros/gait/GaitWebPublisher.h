@@ -33,6 +33,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
+#include <httplib.h>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <ocs2_legged_robot/gait/ModeSequenceTemplate.h>
@@ -46,7 +48,14 @@ class GaitWebPublisher {
  public:
   GaitWebPublisher(rclcpp::Node::SharedPtr nodeHandle, const std::string& gaitFile, const std::string& robotName, bool verbose = false);
 
+  /** Standalone usage: owns an httplib::Server and blocks until rclcpp::ok() is false. */
   void run(int port);
+
+  /** Shared-server usage: renders the gait-selection <form> fragment, posting to commandPath. */
+  std::string renderFormHtml(const std::string& commandPath, const std::string& status = "") const;
+
+  /** Shared-server usage: parses/publishes a submitted gait from req, returning a status message to display. */
+  std::string handleCommand(const httplib::Request& req);
 
  private:
   std::vector<std::string> gaitList_;

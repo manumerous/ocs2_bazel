@@ -62,8 +62,8 @@ DDP, SLP, SQP, and the combined MPC+MRT loop are all buildable.
 ## Legged robot / ANYmal (`ocs2_legged_robot[_ros]`)
 
 ```
-# bringup: mpc solver + dummy simulator + pose commander form (http://localhost:8081/)
-# + gait commander form (http://localhost:8082/) (ddp or sqp)
+# bringup: mpc solver + dummy simulator + pose+gait commander form, both on one page
+# (http://localhost:8081/) (ddp or sqp)
 bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal
 bazel run //ocs2_robotic_examples/ocs2_legged_robot_ros:bringup_anymal_sqp
 

@@ -47,8 +47,11 @@ class MRT_ROS_Dummy_Loop {
    * @param [in] mrtDesiredFrequency: MRT loop frequency in Hz. This should always set to a positive number.
    * @param [in] mpcDesiredFrequency: MPC loop frequency in Hz. If set to a positive number, MPC loop
    * will be simulated to run by this frequency. Note that this might not be the MPC's real-time frequency.
+   * @param [in] debugPrint: If true, prints the current time/observation/policy-update events of the loop to stdout
+   * on every iteration. Mirrors the same `mpc.debugPrint` task.info setting already used by MPC_BASE/MPC_MRT_Interface
+   * on the solver side.
    */
-  MRT_ROS_Dummy_Loop(MRT_ROS_Interface& mrt, scalar_t mrtDesiredFrequency, scalar_t mpcDesiredFrequency = -1);
+  MRT_ROS_Dummy_Loop(MRT_ROS_Interface& mrt, scalar_t mrtDesiredFrequency, scalar_t mpcDesiredFrequency = -1, bool debugPrint = false);
 
   /**
    * Destructor.
@@ -99,6 +102,7 @@ class MRT_ROS_Dummy_Loop {
 
   scalar_t mrtDesiredFrequency_;
   scalar_t mpcDesiredFrequency_;
+  bool debugPrint_;
 };
 
 }  // namespace ocs2

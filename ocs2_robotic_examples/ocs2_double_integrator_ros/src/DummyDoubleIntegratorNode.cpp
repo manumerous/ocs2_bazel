@@ -67,7 +67,8 @@ int main(int argc, char** argv) {
 
   // Dummy loop
   ocs2::MRT_ROS_Dummy_Loop dummyDoubleIntegrator(mrt, doubleIntegratorInterface.mpcSettings().mrtDesiredFrequency_,
-                                                 doubleIntegratorInterface.mpcSettings().mpcDesiredFrequency_);
+                                                 doubleIntegratorInterface.mpcSettings().mpcDesiredFrequency_,
+                                                 doubleIntegratorInterface.mpcSettings().debugPrint_);
   dummyDoubleIntegrator.subscribeObservers({doubleIntegratorDummyVisualization});
 
   // initial state

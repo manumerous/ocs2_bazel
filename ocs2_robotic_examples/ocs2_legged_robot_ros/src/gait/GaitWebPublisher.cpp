@@ -64,8 +64,41 @@ GaitWebPublisher::GaitWebPublisher(rclcpp::Node::SharedPtr nodeHandle, const std
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+std::string GaitWebPublisher::renderFormHtml(const std::string& commandPath, const std::string& status) const {
+  std::ostringstream html;
+  html << "<h1>Select a gait</h1>\n<form method=\"POST\" action=\"" << htmlEscape(commandPath) << "\">\n<select name=\"gait\">\n";
+  for (const auto& gaitName : gaitList_) {
+    html << "<option value=\"" << htmlEscape(gaitName) << "\">" << htmlEscape(gaitName) << "</option>\n";
+  }
+  html << "</select>\n<button type=\"submit\">Send</button>\n</form>\n";
+  if (!status.empty()) {
+    html << "<div class=\"status\">" << htmlEscape(status) << "</div>\n";
+  }
+  return html.str();
+}
+
+/******************************************************************************************************/
+/******************************************************************************************************/
+/******************************************************************************************************/
+std::string GaitWebPublisher::handleCommand(const httplib::Request& req) {
+  const std::string gaitCommand = req.get_param_value("gait");
+  const auto it = gaitMap_.find(gaitCommand);
+  if (it == gaitMap_.end()) {
+    RCLCPP_WARN(node_->get_logger(), "Gait \"%s\" not found.", gaitCommand.c_str());
+    return "Gait \"" + gaitCommand + "\" not found.";
+  }
+  modeSequenceTemplatePublisher_->publish(createModeSequenceTemplateMsg(it->second));
+  RCLCPP_INFO(node_->get_logger(), "Published gait: %s", gaitCommand.c_str());
+  return "Sent gait: " + gaitCommand;
+}
+
+/******************************************************************************************************/
+/******************************************************************************************************/
+/******************************************************************************************************/
 void GaitWebPublisher::run(int port) {
-  const auto renderPage = [this](const std::string& status) {
+  constexpr char kCommandPath[] = "/command";
+
+  const auto renderPage = [this, kCommandPath](const std::string& status) {
     std::ostringstream html;
     html << "<!doctype html><html><head><meta charset=\"utf-8\"><title>" << htmlEscape(node_->get_name())
          << "</title>\n"
@@ -73,15 +106,8 @@ void GaitWebPublisher::run(int port) {
             "select{width:100%;font-size:1rem;padding:0.25rem;margin-top:0.75rem;box-sizing:border-box}"
             "button{margin-top:1rem;font-size:1rem;padding:0.5rem 1.5rem}"
             ".status{margin-top:1rem;color:#155724;background:#d4edda;padding:0.5rem;border-radius:4px}"
-            "</style></head><body>\n<h1>Select a gait</h1>\n<form method=\"POST\" action=\"/command\">\n<select name=\"gait\">\n";
-    for (const auto& gaitName : gaitList_) {
-      html << "<option value=\"" << htmlEscape(gaitName) << "\">" << htmlEscape(gaitName) << "</option>\n";
-    }
-    html << "</select>\n<button type=\"submit\">Send</button>\n</form>\n";
-    if (!status.empty()) {
-      html << "<div class=\"status\">" << htmlEscape(status) << "</div>\n";
-    }
-    html << "</body></html>\n";
+            "</style></head><body>\n"
+         << renderFormHtml(kCommandPath, status) << "</body></html>\n";
     return html.str();
   };
 
@@ -89,17 +115,8 @@ void GaitWebPublisher::run(int port) {
 
   server.Get("/", [&](const httplib::Request&, httplib::Response& res) { res.set_content(renderPage(""), "text/html"); });
 
-  server.Post("/command", [&](const httplib::Request& req, httplib::Response& res) {
-    const std::string gaitCommand = req.get_param_value("gait");
-    const auto it = gaitMap_.find(gaitCommand);
-    if (it == gaitMap_.end()) {
-      RCLCPP_WARN(node_->get_logger(), "Gait \"%s\" not found.", gaitCommand.c_str());
-      res.set_content(renderPage("Gait \"" + gaitCommand + "\" not found."), "text/html");
-      return;
-    }
-    modeSequenceTemplatePublisher_->publish(createModeSequenceTemplateMsg(it->second));
-    RCLCPP_INFO(node_->get_logger(), "Published gait: %s", gaitCommand.c_str());
-    res.set_content(renderPage("Sent gait: " + gaitCommand), "text/html");
+  server.Post(kCommandPath, [&](const httplib::Request& req, httplib::Response& res) {
+    res.set_content(renderPage(handleCommand(req)), "text/html");
   });
 
   std::thread spinThread([this, &server]() {

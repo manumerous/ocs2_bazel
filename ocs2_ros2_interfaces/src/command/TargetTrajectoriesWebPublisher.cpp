@@ -65,8 +65,59 @@ TargetTrajectoriesWebPublisher::TargetTrajectoriesWebPublisher(rclcpp::Node::Sha
 /******************************************************************************************************/
 /******************************************************************************************************/
 /******************************************************************************************************/
+std::string TargetTrajectoriesWebPublisher::renderFormHtml(const std::string& promptText, const std::string& commandPath,
+                                                            const std::string& status) const {
+  std::ostringstream html;
+  html << "<h1>" << htmlEscape(promptText) << "</h1>\n<form method=\"POST\" action=\"" << htmlEscape(commandPath) << "\">\n";
+  for (size_t i = 0; i < fieldNames_.size(); ++i) {
+    html << "<label>" << htmlEscape(fieldNames_[i]) << " (limit \xc2\xb1" << targetCommandLimits_(i) << ")"
+         << "<input type=\"number\" step=\"any\" name=\"f" << i << "\" value=\"0\" min=\"" << -targetCommandLimits_(i) << "\" max=\""
+         << targetCommandLimits_(i) << "\"></label>\n";
+  }
+  html << "<button type=\"submit\">Send</button>\n</form>\n";
+  if (!status.empty()) {
+    html << "<div class=\"status\">" << htmlEscape(status) << "</div>\n";
+  }
+  return html.str();
+}
+
+/******************************************************************************************************/
+/******************************************************************************************************/
+/******************************************************************************************************/
+std::string TargetTrajectoriesWebPublisher::handleCommand(const httplib::Request& req) {
+  vector_t commandLineInput = vector_t::Zero(targetCommandLimits_.size());
+  for (Eigen::Index i = 0; i < targetCommandLimits_.size(); ++i) {
+    const std::string fieldKey = "f" + std::to_string(i);
+    if (req.has_param(fieldKey)) {
+      try {
+        commandLineInput(i) = std::stod(req.get_param_value(fieldKey));
+      } catch (const std::exception&) {
+      }
+    }
+  }
+  commandLineInput = commandLineInput.cwiseMin(targetCommandLimits_).cwiseMax(-targetCommandLimits_);
+
+  SystemObservation observation;
+  {
+    std::lock_guard<std::mutex> lock(latestObservationMutex_);
+    observation = latestObservation_;
+  }
+
+  const auto targetTrajectories = commandLineToTargetTrajectoriesFun_(commandLineInput, observation);
+  targetTrajectoriesPublisherPtr_->publishTargetTrajectories(targetTrajectories);
+
+  const std::string statusMsg = "Sent: [" + toDelimitedString(commandLineInput) + "]";
+  RCLCPP_INFO(node_->get_logger(), "%s", statusMsg.c_str());
+  return statusMsg;
+}
+
+/******************************************************************************************************/
+/******************************************************************************************************/
+/******************************************************************************************************/
 void TargetTrajectoriesWebPublisher::run(int port, const std::string& promptText) {
-  const auto renderPage = [this, &promptText](const std::string& status) {
+  constexpr char kCommandPath[] = "/command";
+
+  const auto renderPage = [this, &promptText, kCommandPath](const std::string& status) {
     std::ostringstream html;
     html << "<!doctype html><html><head><meta charset=\"utf-8\"><title>" << htmlEscape(node_->get_name())
          << "</title>\n"
@@ -74,18 +125,8 @@ void TargetTrajectoriesWebPublisher::run(int port, const std::string& promptText
             "label{display:block;margin-top:0.75rem}input{width:100%;font-size:1rem;padding:0.25rem;"
             "box-sizing:border-box}button{margin-top:1rem;font-size:1rem;padding:0.5rem 1.5rem}"
             ".status{margin-top:1rem;color:#155724;background:#d4edda;padding:0.5rem;border-radius:4px}"
-            "</style></head><body>\n<h1>"
-         << htmlEscape(promptText) << "</h1>\n<form method=\"POST\" action=\"/command\">\n";
-    for (size_t i = 0; i < fieldNames_.size(); ++i) {
-      html << "<label>" << htmlEscape(fieldNames_[i]) << " (limit \xc2\xb1" << targetCommandLimits_(i) << ")"
-           << "<input type=\"number\" step=\"any\" name=\"f" << i << "\" value=\"0\" min=\"" << -targetCommandLimits_(i) << "\" max=\""
-           << targetCommandLimits_(i) << "\"></label>\n";
-    }
-    html << "<button type=\"submit\">Send</button>\n</form>\n";
-    if (!status.empty()) {
-      html << "<div class=\"status\">" << htmlEscape(status) << "</div>\n";
-    }
-    html << "</body></html>\n";
+            "</style></head><body>\n"
+         << renderFormHtml(promptText, kCommandPath, status) << "</body></html>\n";
     return html.str();
   };
 
@@ -93,30 +134,8 @@ void TargetTrajectoriesWebPublisher::run(int port, const std::string& promptText
 
   server.Get("/", [&](const httplib::Request&, httplib::Response& res) { res.set_content(renderPage(""), "text/html"); });
 
-  server.Post("/command", [&](const httplib::Request& req, httplib::Response& res) {
-    vector_t commandLineInput = vector_t::Zero(targetCommandLimits_.size());
-    for (Eigen::Index i = 0; i < targetCommandLimits_.size(); ++i) {
-      const std::string fieldKey = "f" + std::to_string(i);
-      if (req.has_param(fieldKey)) {
-        try {
-          commandLineInput(i) = std::stod(req.get_param_value(fieldKey));
-        } catch (const std::exception&) {
-        }
-      }
-    }
-    commandLineInput = commandLineInput.cwiseMin(targetCommandLimits_).cwiseMax(-targetCommandLimits_);
-
-    SystemObservation observation;
-    {
-      std::lock_guard<std::mutex> lock(latestObservationMutex_);
-      observation = latestObservation_;
-    }
-
-    const auto targetTrajectories = commandLineToTargetTrajectoriesFun_(commandLineInput, observation);
-    targetTrajectoriesPublisherPtr_->publishTargetTrajectories(targetTrajectories);
-
-    const std::string statusMsg = "Sent: [" + toDelimitedString(commandLineInput) + "]";
-    RCLCPP_INFO(node_->get_logger(), "%s", statusMsg.c_str());
+  server.Post(kCommandPath, [&](const httplib::Request& req, httplib::Response& res) {
+    const std::string statusMsg = handleCommand(req);
     res.set_content(renderPage(statusMsg), "text/html");
   });
 

@@ -35,6 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <vector>
 
+#include <httplib.h>
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <ocs2_mpc/SystemObservation.h>
@@ -53,7 +55,17 @@ class TargetTrajectoriesWebPublisher final {
 
   size_t targetCommandSize() const { return targetCommandLimits_.size(); }
 
+  /** Standalone usage: owns an httplib::Server and blocks until rclcpp::ok() is false. */
   void run(int port, const std::string& promptText = "Enter command");
+
+  /**
+   * Shared-server usage: renders this commander's <form> fragment (for embedding into a page a caller assembles),
+   * posting to commandPath. status (if non-empty) is shown below the form.
+   */
+  std::string renderFormHtml(const std::string& promptText, const std::string& commandPath, const std::string& status = "") const;
+
+  /** Shared-server usage: parses/publishes a submitted command from req, returning a status message to display. */
+  std::string handleCommand(const httplib::Request& req);
 
  private:
   const vector_t targetCommandLimits_;

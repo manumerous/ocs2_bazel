@@ -27,16 +27,28 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ******************************************************************************/
 
+// Combines LeggedRobotPoseCommandNodeWeb and LeggedRobotGaitCommandNodeWeb's forms onto a single
+// httplib::Server/page instead of two separate ports -- one browser tab for both pose and gait commands.
+
+#include <mutex>
+#include <sstream>
 #include <string>
+#include <thread>
+
+#include <httplib.h>
 
 #include "ament_index_cpp/get_package_share_directory.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 #include <ocs2_core/Types.h>
 #include <ocs2_core/misc/LoadData.h>
+#include <ocs2_ros2_interfaces/command/HtmlFormUtils.h>
 #include <ocs2_ros2_interfaces/command/TargetTrajectoriesWebPublisher.h>
 
+#include "ocs2_legged_robot_ros/gait/GaitWebPublisher.h"
+
 using namespace ocs2;
+using namespace legged_robot;
 
 namespace {
 scalar_t targetDisplacementVelocity;
@@ -92,7 +104,7 @@ int main(int argc, char* argv[]) {
   std::string referenceFileFolderName = std::string(programArgs[2]);
 
   rclcpp::init(argc, argv);
-  rclcpp::Node::SharedPtr nodeHandle = rclcpp::Node::make_shared(robotName + "_target");
+  rclcpp::Node::SharedPtr nodeHandle = rclcpp::Node::make_shared(robotName + "_command");
 
   const std::string referenceFile =
       ament_index_cpp::get_package_share_directory("ocs2_legged_robot") + "/config/" + referenceFileFolderName + "/reference.info";
@@ -106,8 +118,64 @@ int main(int argc, char* argv[]) {
   TargetTrajectoriesWebPublisher targetPoseCommand(nodeHandle, robotName, relativeBaseLimit,
                                                    {"deltaX", "deltaY", "deltaZ", "deltaYaw (deg)"}, &commandLineToTargetTrajectories);
 
+  const std::string gaitCommandFile =
+      ament_index_cpp::get_package_share_directory("ocs2_legged_robot") + "/config/" + referenceFileFolderName + "/gait.info";
+  GaitWebPublisher gaitCommand(nodeHandle, gaitCommandFile, robotName, true);
+
+  constexpr char kPosePath[] = "/pose-command";
+  constexpr char kGaitPath[] = "/gait-command";
+
+  std::mutex statusMutex;
+  std::string poseStatus;
+  std::string gaitStatus;
+
+  const auto renderPage = [&]() {
+    std::lock_guard<std::mutex> lock(statusMutex);
+    std::ostringstream html;
+    html << "<!doctype html><html><head><meta charset=\"utf-8\"><title>" << htmlEscape(nodeHandle->get_name())
+         << "</title>\n"
+            "<style>body{font-family:sans-serif;max-width:32rem;margin:2rem auto;padding:0 1rem}"
+            "label{display:block;margin-top:0.75rem}input,select{width:100%;font-size:1rem;padding:0.25rem;"
+            "margin-top:0.75rem;box-sizing:border-box}button{margin-top:1rem;font-size:1rem;padding:0.5rem 1.5rem}"
+            ".status{margin-top:1rem;color:#155724;background:#d4edda;padding:0.5rem;border-radius:4px}"
+            "hr{margin:2rem 0}</style></head><body>\n"
+         << targetPoseCommand.renderFormHtml("Enter XYZ and Yaw (deg) displacements for the TORSO", kPosePath, poseStatus) << "<hr>\n"
+         << gaitCommand.renderFormHtml(kGaitPath, gaitStatus) << "</body></html>\n";
+    return html.str();
+  };
+
+  httplib::Server server;
+
+  server.Get("/", [&](const httplib::Request&, httplib::Response& res) { res.set_content(renderPage(), "text/html"); });
+
+  server.Post(kPosePath, [&](const httplib::Request& req, httplib::Response& res) {
+    const std::string status = targetPoseCommand.handleCommand(req);
+    {
+      std::lock_guard<std::mutex> lock(statusMutex);
+      poseStatus = status;
+    }
+    res.set_content(renderPage(), "text/html");
+  });
+
+  server.Post(kGaitPath, [&](const httplib::Request& req, httplib::Response& res) {
+    const std::string status = gaitCommand.handleCommand(req);
+    {
+      std::lock_guard<std::mutex> lock(statusMutex);
+      gaitStatus = status;
+    }
+    res.set_content(renderPage(), "text/html");
+  });
+
+  // rclcpp::spin() blocks until shutdown then returns, doubling as this server's stop signal.
+  std::thread spinThread([&]() {
+    rclcpp::spin(nodeHandle);
+    server.stop();
+  });
+
   constexpr int port = 8081;
-  targetPoseCommand.run(port, "Enter XYZ and Yaw (deg) displacements for the TORSO");
+  RCLCPP_INFO(nodeHandle->get_logger(), "Command form ready at http://localhost:%d/", port);
+  server.listen("0.0.0.0", port);
+  spinThread.join();
 
   return 0;
 }
